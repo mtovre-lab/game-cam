@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR BATTLE - Futuristic Web Shooter</title>
+
+    <!-- WebRTC PeerJS Library via CDN for Serverless Peer-to-Peer Multiplayer -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <style>
+        /* --- RESET & GLOBAL STYLES --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050508;
+            color: #fff;
+        }
+
+        /* --- BACKGROUND & CANVAS LAYERS --- */
+        #camera-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .fallback-bg {
+            background: radial-gradient(circle at center, #1a1f35 0%, #050508 100%);
+        }
+
+        /* --- UI OVERLAY LAYER --- */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        }
+
+        /* --- SCREENS --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(5, 5, 8, 0.88);
+            backdrop-filter: blur(10px);
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        h1.title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: #00f0ff;
+            text-shadow: 0 0 15px rgba(0, 240, 255, 0.6), 0 0 30px rgba(0, 240, 255, 0.4);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        p.subtitle {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        /* --- BUTTONS & INPUTS --- */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 290px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(0, 110, 255, 0.25));
+            border: 1px solid #00f0ff;
+            color: #fff;
+            padding: 13px 20px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            background: rgba(0, 240, 255, 0.45);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.7);
+        }
+
+        .btn-friend {
+            border-color: #ff0055;
+            background: linear-gradient(135deg, rgba(255, 0, 85, 0.25), rgba(153, 0, 51, 0.25));
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.3);
+        }
+
+        .btn-secondary {
+            border-color: #64748b;
+            background: rgba(30, 41, 59, 0.5);
+            color: #cbd5e1;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            border-color: #ff0055;
+            background: rgba(255, 0, 85, 0.2);
+            color: #ff0055;
+        }
+
+        .input-code {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid #00f0ff;
+            border-radius: 8px;
+            color: #00f0ff;
+            font-size: 1.4rem;
+            font-weight: 900;
+            text-align: center;
+            padding: 10px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            outline: none;
+            margin-bottom: 10px;
+        }
+
+        /* --- HUD ELEMENTS --- */
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 12px 15px;
+            width: 100%;
+        }
+
+        .player-stats, .score-board {
+            padding: 8px 12px;
+            min-width: 130px;
+        }
+
+        .stat-bar {
+            width: 100%;
+            height: 7px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-top: 3px;
+            overflow: hidden;
+        }
+
+        .stat-fill-hp {
+            height: 100%;
+            width: 100%;
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+            transition: width 0.2s ease;
+        }
+
+        .stat-fill-shield {
+            height: 100%;
+            width: 100%;
+            background: #00f0ff;
+            box-shadow: 0 0 8px #00f0ff;
+            transition: width 0.2s ease;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            color: #94a3b8;
+        }
+
+        .match-timer {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #ffcc00;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 204, 0, 0.3);
+        }
+
+        /* Connection Status Badge */
+        #net-status-badge {
+            position: absolute;
+            top: 65px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #64748b;
+            color: #cbd5e1;
+            z-index: 5;
+        }
+
+        /* --- CROSSHAIR --- */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            pointer-events: none;
+        }
+
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background-color: rgba(0, 240, 255, 0.8);
+            box-shadow: 0 0 6px #00f0ff;
+        }
+
+        #crosshair::before { top: 19px; left: 0; width: 40px; height: 2px; }
+        #crosshair::after { top: 0; left: 19px; width: 2px; height: 40px; }
+
+        #crosshair .target-box {
+            position: absolute;
+            top: -5px; left: -5px;
+            width: 48px; height: 48px;
+            border: 2px dashed #ff0055;
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(1.3);
+            transition: all 0.15s ease;
+        }
+
+        #crosshair.locked .target-box {
+            opacity: 1;
+            transform: scale(1);
+            animation: spin 3s linear infinite;
+        }
+
+        #crosshair.locked::before, #crosshair.locked::after {
+            background-color: #ff0055;
+            box-shadow: 0 0 8px #ff0055;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- CONTROLS LAYER --- */
+        .controls-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 20px 25px;
+            width: 100%;
+        }
+
+        #joystick-zone {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 240, 255, 0.3);
+            border-radius: 50%;
+            position: relative;
+            touch-action: none;
+        }
+
+        #joystick-stick {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #00f0ff, #0066ff);
+            border-radius: 50%;
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            box-shadow: 0 0 10px #00f0ff;
+            pointer-events: none;
+        }
+
+        .action-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+
+        #fire-btn {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff0055, #990033);
+            border: 2px solid #ff6699;
+            color: #fff;
+            font-weight: 900;
+            font-size: 1rem;
+            box-shadow: 0 0 18px rgba(255, 0, 85, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        #fire-btn:active {
+            transform: scale(0.92);
+            background: #ff0055;
+        }
+
+        .secondary-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sub-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #00f0ff;
+            color: #00f0ff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #warning-indicator {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0055;
+            font-weight: 900;
+            font-size: 1.1rem;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid #ff0055;
+            animation: blink 0.6s infinite alternate;
+        }
+
+        @keyframes blink { from { opacity: 0.3; } to { opacity: 1; } }
+
+        .settings-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 300px;
+            text-align: right;
+            margin-bottom: 20px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .setting-item label {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+
+        .setting-item select, .setting-item input[type="range"] {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #00f0ff;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        @media (min-width: 768px) {
+            #joystick-zone { display: none; }
+            p.desktop-tip { display: block !important; }
+        }
+
+        p.desktop-tip {
+            display: none;
+            font-size: 0.75rem;
+            color: #00f0ff;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Camera Feed Background -->
+    <video id="camera-video" autoplay playsinline muted></video>
+
+    <!-- Canvas Layer -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Connection Status Badge -->
+    <div id="net-status-badge">🟢 SINGLE PLAYER</div>
+
+    <!-- HUD Overlay Layer -->
+    <div class="ui-layer">
+        <div class="hud-top">
+            <div class="player-stats glass-panel">
+                <div class="stat-label">
+                    <span>YOU HP</span>
+                    <span id="hp-text">100</span>
+                </div>
+                <div class="stat-bar">
+                    <div id="hp-fill" class="stat-fill-hp"></div>
+                </div>
+
+                <div class="stat-label" style="margin-top: 5px;">
+                    <span>SHIELD</span>
+                    <span id="shield-text">50</span>
+                </div>
+                <div class="stat-bar">
+                    <div id="shield-fill" class="stat-fill-shield"></div>
+                </div>
+            </div>
+
+            <div class="match-timer" id="match-timer">02:00</div>
+
+            <div class="score-board glass-panel">
+                <div class="stat-label">
+                    <span id="opponent-name-label">OPPONENT</span>
+                    <span id="opp-hp-text">100</span>
+                </div>
+                <div class="stat-bar">
+                    <div id="opp-hp-fill" class="stat-fill-hp" style="background: #ff0055; box-shadow: 0 0 8px #ff0055;"></div>
+                </div>
+
+                <div class="stat-label" style="margin-top: 5px;">
+                    <span>SCORE</span>
+                    <span id="score-text">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="warning-indicator">
+            <span>⚠️</span> <span id="warning-text">TARGET BEHIND</span>
+        </div>
+
+        <div id="crosshair">
+            <div class="target-box"></div>
+        </div>
+
+        <div class="controls-bottom interactive">
+            <div id="joystick-zone">
+                <div id="joystick-stick"></div>
+            </div>
+
+            <div class="action-btns">
+                <div class="secondary-btns">
+                    <button class="sub-btn" id="reload-btn">ENERGY</button>
+                    <button class="sub-btn" id="ability-btn">SHIELD</button>
+                </div>
+                <button id="fire-btn">FIRE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN MENU SCREEN -->
+    <div id="screen-menu" class="screen interactive">
+        <h1 class="title">AR BATTLE</h1>
+        <p class="subtitle">NEXT-GEN AUGMENTED SHOOTER</p>
+
+        <div class="btn-group">
+            <button class="btn" id="btn-play">PLAY SOLO MATCH</button>
+            <button class="btn btn-friend" id="btn-friend-menu">⚔️ FIGHT WITH FRIEND</button>
+            <button class="btn btn-secondary" id="btn-practice">PRACTICE MODE</button>
+            <button class="btn btn-secondary" id="btn-settings">SETTINGS</button>
+        </div>
+
+        <p class="desktop-tip">Desktop Mode: Use Mouse to Aim & Left-Click to Shoot</p>
+    </div>
+
+    <!-- FRIEND MULTIPLAYER ROOM MENU SCREEN -->
+    <div id="screen-friend" class="screen hidden interactive">
+        <h1 class="title" style="font-size: 2rem;">FIGHT WITH FRIEND</h1>
+        <p class="subtitle">REAL-TIME WEBRTC BATTLE</p>
+
+        <div class="glass-panel" style="padding: 20px; width: 100%; max-width: 300px; margin-bottom: 15px;">
+            <button class="btn" id="btn-create-room" style="width: 100%; margin-bottom: 10px;">CREATE ROOM</button>
+            <div id="created-room-box" style="display: none; margin-top: 10px;">
+                <p style="font-size: 0.75rem; color: #cbd5e1;">YOUR ROOM CODE:</p>
+                <div id="display-room-code" style="font-size: 1.8rem; font-weight: 900; color: #00f0ff; letter-spacing: 4px; margin: 5px 0;">------</div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary" id="btn-copy-code" style="font-size: 0.8rem; padding: 6px 10px; flex: 1;">COPY CODE</button>
+                    <button class="btn btn-secondary" id="btn-share-code" style="font-size: 0.8rem; padding: 6px 10px; flex: 1;">SHARE</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 20px; width: 100%; max-width: 300px; margin-bottom: 20px;">
+            <p style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 8px;">JOIN EXISTING ROOM:</p>
+            <input type="text" id="input-room-code" class="input-code" placeholder="ROOM CODE" maxlength="6">
+            <button class="btn btn-friend" id="btn-join-room" style="width: 100%;">JOIN ROOM</button>
+        </div>
+
+        <button class="btn btn-secondary" id="btn-back-friend">BACK TO MENU</button>
+    </div>
+
+    <!-- LOBBY / WAITING SCREEN -->
+    <div id="screen-lobby" class="screen hidden interactive">
+        <h1 class="title" style="font-size: 1.8rem;" id="lobby-room-header">ROOM: ------</h1>
+        <p class="subtitle" id="lobby-status-text">WAITING FOR PLAYER 2...</p>
+
+        <div class="glass-panel" style="padding: 20px; width: 100%; max-width: 280px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;" id="p1-status">
+                <span>PLAYER 1 (HOST):</span>
+                <strong style="color: #00ff88;">READY ✅</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;" id="p2-status">
+                <span>PLAYER 2 (GUEST):</span>
+                <strong style="color: #ff0055;" id="p2-state-text">WAITING... ⏳</strong>
+            </div>
+        </div>
+
+        <div id="countdown-overlay" style="font-size: 3rem; font-weight: 900; color: #00f0ff; height: 50px;"></div>
+
+        <button class="btn btn-danger" id="btn-leave-lobby" style="margin-top: 15px;">LEAVE ROOM</button>
+    </div>
+
+    <!-- MATCHMAKING SCREEN -->
+    <div id="screen-matchmaking" class="screen hidden interactive">
+        <h1 class="title" style="font-size: 1.8rem;">SEARCHING...</h1>
+        <p class="subtitle" id="geo-status">Scanning nearby GPS coordinates...</p>
+        <div style="font-size: 3rem; margin: 20px 0; animation: spin 2s linear infinite;">📡</div>
+        <button class="btn btn-danger" id="btn-cancel-match">CANCEL</button>
+    </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div id="screen-settings" class="screen hidden interactive">
+        <h1 class="title" style="font-size: 1.8rem; margin-bottom: 15px;">SETTINGS</h1>
+
+        <div class="settings-grid glass-panel" style="padding: 15px;">
+            <div class="setting-item">
+                <label>Graphics:</label>
+                <select id="setting-graphics">
+                    <option value="HIGH">HIGH</option>
+                    <option value="MEDIUM" selected>MEDIUM</option>
+                    <option value="LOW">LOW</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>Sound Effects:</label>
+                <select id="setting-sound">
+                    <option value="ON" selected>ON</option>
+                    <option value="OFF">OFF</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>Vibration:</label>
+                <select id="setting-vibe">
+                    <option value="ON" selected>ON</option>
+                    <option value="OFF">OFF</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>Battery Saver:</label>
+                <select id="setting-battery">
+                    <option value="OFF" selected>OFF</option>
+                    <option value="ON">ON</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>Aim Sensitivity:</label>
+                <input type="range" id="setting-sens" min="0.5" max="2.5" step="0.1" value="1.0">
+            </div>
+        </div>
+
+        <button class="btn" id="btn-save-settings">SAVE & BACK</button>
+    </div>
+
+    <!-- PERMISSION / CAMERA ERROR SCREEN -->
+    <div id="screen-permission" class="screen hidden interactive">
+        <h1 class="title" style="color: #ff0055;">CAMERA REQUIRED</h1>
+        <p class="subtitle" style="max-width: 280px; margin-bottom: 20px;">
+            Camera access is required to play AR Battle in Real-World Mode.
+        </p>
+        <div class="btn-group">
+            <button class="btn" id="btn-try-camera">TRY AGAIN</button>
+            <button class="btn btn-secondary" id="btn-fallback-mode">CONTINUE WITHOUT CAMERA</button>
+        </div>
+    </div>
+
+    <!-- GAME OVER / RESULTS SCREEN -->
+    <div id="screen-results" class="screen hidden interactive">
+        <h1 class="title" id="results-title">MATCH OVER</h1>
+        <p class="subtitle" id="results-subtitle">OPERATIONAL SUMMARY</p>
+
+        <div class="glass-panel" style="padding: 20px; width: 100%; max-width: 280px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span>FINAL SCORE:</span>
+                <strong id="res-score" style="color: #00f0ff;">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span>ELIMINATIONS:</span>
+                <strong id="res-elims" style="color: #00ff88;">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>ACCURACY:</span>
+                <strong id="res-acc" style="color: #ffcc00;">0%</strong>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn" id="btn-rematch" style="display: none;">REMATCH 🔄</button>
+            <button class="btn btn-secondary" id="btn-restart">MAIN MENU</button>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        /* --- CONFIG & LOCAL STORAGE --- */
+        const CONFIG = {
+            graphics: localStorage.getItem('ar_graphics') || 'MEDIUM',
+            sound: localStorage.getItem('ar_sound') || 'ON',
+            vibe: localStorage.getItem('ar_vibe') || 'ON',
+            battery: localStorage.getItem('ar_battery') || 'OFF',
+            sens: parseFloat(localStorage.getItem('ar_sens')) || 1.0,
+            highScore: parseInt(localStorage.getItem('ar_highscore')) || 0
+        };
+
+        /* --- MULTIPLAYER CONFIG (PeerJS WebRTC Configuration) --- */
+        const MULTIPLAYER_CONFIG = {
+            prefix: 'arbattle-room-', // Unique prefix for PeerJS IDs
+            debug: 1
+        };
+
+        let peer = null;
+        let peerConn = null;
+        let isHost = false;
+        let currentRoomCode = '';
+        let multiplayerActive = false;
+
+        /* --- AUDIO SYSTEM (Web Audio API) --- */
+        class AudioSystem {
+            constructor() { this.ctx = null; }
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) this.ctx = new AudioContext();
+                }
+            }
+            playTone(freq, type, duration, vol = 0.1) {
+                if (CONFIG.sound !== 'ON' || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+            playFire() {
+                if (CONFIG.sound !== 'ON' || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.15);
+                } catch(e) {}
+            }
+            playHit() { this.playTone(180, 'square', 0.08, 0.15); }
+            playEliminated() {
+                if (CONFIG.sound !== 'ON' || !this.ctx) return;
+                this.playTone(300, 'sine', 0.1, 0.2);
+                setTimeout(() => this.playTone(450, 'sine', 0.15, 0.2), 100);
+                setTimeout(() => this.playTone(600, 'triangle', 0.2, 0.25), 250);
+            }
+        }
+        const audio = new AudioSystem();
+
+        /* --- CAMERA SYSTEM --- */
+        const videoElem = document.getElementById('camera-video');
+        let cameraActive = false;
+
+        async function initCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: "environment",
+                        width: { ideal: CONFIG.battery === 'ON' ? 640 : 1280 },
+                        height: { ideal: CONFIG.battery === 'ON' ? 480 : 720 }
+                    },
+                    audio: false
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElem.srcObject = stream;
+                cameraActive = true;
+                document.body.classList.remove('fallback-bg');
+                return true;
+            } catch (err) {
+                cameraActive = false;
+                document.body.classList.add('fallback-bg');
+                return false;
+            }
+        }
+
+        /* --- GEOLOCATION SYSTEM --- */
+        function checkLocation(callback) {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => callback(true, pos),
+                    (err) => callback(false, null),
+                    { timeout: 4000 }
+                );
+            } else {
+                callback(false, null);
+            }
+        }
+
+        /* --- GAME ENGINE & STATE --- */
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameState = {
+            active: false,
+            score: 0,
+            timeRemaining: 120,
+            shotsFired: 0,
+            shotsHit: 0,
+            eliminations: 0,
+            player: { hp: 100, shield: 50, x: 0, y: 0 },
+            opponent: { hp: 100, shield: 50, x: 0, y: 0, z: 200, name: 'FRIEND', isDead: false },
+            enemies: [],
+            projectiles: [],
+            particles: []
+        };
+
+        let matchTimerInterval = null;
+
+        /* --- BOT CLASS FOR SOLO / PRACTICE --- */
+        class EnemyBot {
+            constructor(idName = 'BOT-01') {
+                this.name = idName;
+                this.hp = 100;
+                this.maxHp = 100;
+                this.shield = 50;
+                this.maxShield = 50;
+                this.x = (Math.random() - 0.5) * canvas.width * 0.8;
+                this.y = (Math.random() - 0.5) * canvas.height * 0.5;
+                this.z = 200;
+                this.size = 55;
+                this.vx = (Math.random() - 0.5) * 2.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+                this.lastAttack = Date.now();
+                this.attackRate = 2500;
+                this.isDead = false;
+            }
+
+            update() {
+                if (this.isDead) return;
+                this.x += this.vx;
+                this.y += this.vy;
+                if (Math.abs(this.x) > canvas.width * 0.35) this.vx *= -1;
+                if (Math.abs(this.y) > canvas.height * 0.25) this.vy *= -1;
+
+                if (Date.now() - this.lastAttack > this.attackRate) {
+                    this.attackPlayer();
+                    this.lastAttack = Date.now();
+                }
+            }
+
+            attackPlayer() {
+                if (gameState.player.hp <= 0) return;
+                if (gameState.player.shield > 0) {
+                    gameState.player.shield = Math.max(0, gameState.player.shield - 15);
+                } else {
+                    gameState.player.hp = Math.max(0, gameState.player.hp - 10);
+                }
+                updateHUD();
+                audio.playHit();
+                if (CONFIG.vibe === 'ON' && navigator.vibrate) navigator.vibrate(80);
+                if (gameState.player.hp <= 0) endMatch(false);
+            }
+
+            draw() {
+                if (this.isDead) return;
+                drawTargetAvatar(this.x, this.y, this.z, this.size, this.hp, this.maxHp, this.shield, this.maxShield, this.name, false);
+            }
+
+            takeDamage(amount) {
+                gameState.shotsHit++;
+                if (this.shield > 0) {
+                    this.shield -= amount;
+                    if (this.shield < 0) { this.hp += this.shield; this.shield = 0; }
+                } else {
+                    this.hp -= amount;
+                }
+                audio.playHit();
+                spawnParticles(canvas.width / 2 + this.x, canvas.height / 2 + this.y, '#ff0055', 8);
+
+                if (this.hp <= 0 && !this.isDead) {
+                    this.isDead = true;
+                    gameState.score += 100;
+                    gameState.eliminations++;
+                    audio.playEliminated();
+                    spawnParticles(canvas.width / 2 + this.x, canvas.height / 2 + this.y, '#00f0ff', 25);
+                    updateHUD();
+
+                    setTimeout(() => {
+                        if (gameState.active && !multiplayerActive) {
+                            gameState.enemies = [new EnemyBot(`BOT-0${gameState.eliminations + 1}`)];
+                        }
+                    }, 2000);
+                }
+            }
+        }
+
+        /* --- DRAW AVATAR HELPER --- */
+        function drawTargetAvatar(x, y, z, size, hp, maxHp, shield, maxShield, name, isFriendPlayer = false) {
+            const screenX = canvas.width / 2 + x;
+            const screenY = canvas.height / 2 + y;
+            const scale = 200 / (z || 200);
+            const currentSize = size * scale;
+
+            ctx.save();
+            ctx.translate(screenX, screenY);
+
+            const isOffscreen = screenX < 0 || screenX > canvas.width || screenY < 0 || screenY > canvas.height;
+            document.getElementById('warning-indicator').style.display = isOffscreen ? 'flex' : 'none';
+
+            // Outer Shape
+            ctx.strokeStyle = isFriendPlayer ? '#ff0055' : '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.fillStyle = isFriendPlayer ? 'rgba(255, 0, 85, 0.15)' : 'rgba(0, 240, 255, 0.15)';
+
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i;
+                const px = Math.cos(angle) * currentSize;
+                const py = Math.sin(angle) * currentSize;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Center Eye
+            ctx.beginPath();
+            ctx.arc(0, 0, currentSize * 0.35, 0, Math.PI * 2);
+            ctx.fillStyle = isFriendPlayer ? '#00f0ff' : '#ff0055';
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.shadowBlur = 10;
+            ctx.fill();
+
+            // Bars
+            ctx.shadowBlur = 0;
+            const barWidth = currentSize * 2.2;
+            const barHeight = 5;
+            const barY = -currentSize - 18;
+
+            // Shield Bar
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(-barWidth / 2, barY, barWidth, barHeight);
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillRect(-barWidth / 2, barY, barWidth * (shield / maxShield), barHeight);
+
+            // HP Bar
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(-barWidth / 2, barY + barHeight + 2, barWidth, barHeight);
+            ctx.fillStyle = isFriendPlayer ? '#ff0055' : '#00ff88';
+            ctx.fillRect(-barWidth / 2, barY + barHeight + 2, barWidth * (hp / maxHp), barHeight);
+
+            // Name
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${name}`, 0, barY - 5);
+
+            ctx.restore();
+        }
+
+        /* --- PARTICLES & SHOOTING --- */
+        function spawnParticles(x, y, color, count = 10) {
+            if (CONFIG.battery === 'ON') count = Math.floor(count / 2);
+            for (let i = 0; i < count; i++) {
+                gameState.particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: Math.random() * 4 + 2,
+                    color, life: 1.0
+                });
+            }
+        }
+
+        function fireWeapon() {
+            if (!gameState.active) return;
+
+            audio.playFire();
+            gameState.shotsFired++;
+
+            const targetX = canvas.width / 2;
+            const targetY = canvas.height / 2;
+
+            canvas.style.transform = 'translateY(-3px)';
+            setTimeout(() => canvas.style.transform = 'none', 50);
+
+            gameState.projectiles.push({
+                x: canvas.width / 2,
+                y: canvas.height,
+                targetX, targetY,
+                progress: 0,
+                color: '#00f0ff'
+            });
+
+            if (multiplayerActive) {
+                // Send Fire Event to Peer
+                sendPeerData({ type: 'FIRE' });
+
+                // Check hit against friend opponent
+                const oppX = canvas.width / 2 + gameState.opponent.x;
+                const oppY = canvas.height / 2 + gameState.opponent.y;
+                const dist = Math.hypot(targetX - oppX, targetY - oppY);
+
+                if (dist < 55 && !gameState.opponent.isDead) {
+                    gameState.shotsHit++;
+                    sendPeerData({ type: 'HIT', damage: 20 });
+                    audio.playHit();
+                    spawnParticles(oppX, oppY, '#ff0055', 10);
+                }
+            } else {
+                // Solo / Practice Bot hit detection
+                gameState.enemies.forEach(enemy => {
+                    if (enemy.isDead) return;
+                    const eX = canvas.width / 2 + enemy.x;
+                    const eY = canvas.height / 2 + enemy.y;
+                    if (Math.hypot(targetX - eX, targetY - eY) < enemy.size) {
+                        enemy.takeDamage(25);
+                    }
+                });
+            }
+
+            if (CONFIG.vibe === 'ON' && navigator.vibrate) navigator.vibrate(35);
+        }
+
+        function updateHUD() {
+            document.getElementById('hp-text').innerText = gameState.player.hp;
+            document.getElementById('hp-fill').style.width = `${gameState.player.hp}%`;
+
+            document.getElementById('shield-text').innerText = gameState.player.shield;
+            document.getElementById('shield-fill').style.width = `${(gameState.player.shield / 50) * 100}%`;
+
+            document.getElementById('score-text').innerText = gameState.score;
+
+            if (multiplayerActive) {
+                document.getElementById('opp-hp-text').innerText = gameState.opponent.hp;
+                document.getElementById('opp-hp-fill').style.width = `${gameState.opponent.hp}%`;
+            }
+        }
+
+        /* --- MAIN GAME LOOP --- */
+        let lastNetSync = 0;
+
+        function gameLoop(timestamp) {
+            if (!gameState.active) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Render Projectiles
+            for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+                const p = gameState.projectiles[i];
+                p.progress += 0.22;
+                const curX = p.x + (p.targetX - p.x) * p.progress;
+                const curY = p.y + (p.targetY - p.y) * p.progress;
+
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(curX, curY);
+                ctx.lineTo(curX, curY + 12);
+                ctx.stroke();
+
+                if (p.progress >= 1.0) gameState.projectiles.splice(i, 1);
+            }
+
+            // Render Particles
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                const pt = gameState.particles[i];
+                pt.x += pt.vx; pt.y += pt.vy; pt.life -= 0.04;
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = Math.max(0, pt.life);
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                ctx.fill();
+                if (pt.life <= 0) gameState.particles.splice(i, 1);
+            }
+            ctx.globalAlpha = 1.0;
+
+            let aimingAtTarget = false;
+
+            if (multiplayerActive) {
+                // Throttle position sync (Every 50ms)
+                if (timestamp - lastNetSync > 50) {
+                    sendPeerData({
+                        type: 'POS',
+                        x: gameState.player.x,
+                        y: gameState.player.y
+                    });
+                    lastNetSync = timestamp;
+                }
+
+                if (!gameState.opponent.isDead) {
+                    drawTargetAvatar(
+                        gameState.opponent.x, gameState.opponent.y, gameState.opponent.z,
+                        55, gameState.opponent.hp, 100, gameState.opponent.shield, 50,
+                        'FRIEND', true
+                    );
+
+                    const oppX = canvas.width / 2 + gameState.opponent.x;
+                    const oppY = canvas.height / 2 + gameState.opponent.y;
+                    if (Math.hypot(canvas.width / 2 - oppX, canvas.height / 2 - oppY) < 55) {
+                        aimingAtTarget = true;
+                    }
+                }
+            } else {
+                gameState.enemies.forEach(enemy => {
+                    enemy.update();
+                    enemy.draw();
+                    const eX = canvas.width / 2 + enemy.x;
+                    const eY = canvas.height / 2 + enemy.y;
+                    if (Math.hypot(canvas.width / 2 - eX, canvas.height / 2 - eY) < enemy.size) {
+                        aimingAtTarget = true;
+                    }
+                });
+            }
+
+            const crosshair = document.getElementById('crosshair');
+            if (aimingAtTarget) crosshair.classList.add('locked');
+            else crosshair.classList.remove('locked');
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        /* --- WEBRTC REAL-TIME MULTIPLAYER SYSTEM --- */
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        function setNetStatus(text, color) {
+            const badge = document.getElementById('net-status-badge');
+            badge.innerText = text;
+            badge.style.borderColor = color;
+        }
+
+        function initPeerServer(customId = null, callback) {
+            if (peer) peer.destroy();
+
+            setNetStatus('🟡 CONNECTING...', '#ffcc00');
+            peer = customId ? new Peer(customId) : new Peer();
+
+            peer.on('open', (id) => {
+                setNetStatus('🟢 CONNECTED', '#00ff88');
+                if (callback) callback(id);
+            });
+
+            peer.on('connection', (conn) => {
+                if (peerConn) {
+                    conn.send({ type: 'ROOM_FULL' });
+                    setTimeout(() => conn.close(), 500);
+                    return;
+                }
+                peerConn = conn;
+                setupPeerEvents();
+            });
+
+            peer.on('error', (err) => {
+                console.error("Peer Error:", err);
+                setNetStatus('🔴 DISCONNECTED', '#ff0055');
+            });
+        }
+
+        function setupPeerEvents() {
+            peerConn.on('open', () => {
+                setNetStatus('🟢 MATCH CONNECTED', '#00ff88');
+                showScreen('screen-lobby');
+
+                document.getElementById('p2-state-text').innerText = 'READY ✅';
+                document.getElementById('p2-state-text').style.color = '#00ff88';
+                document.getElementById('lobby-status-text').innerText = 'BOTH PLAYERS READY!';
+
+                // Start 3-second Countdown for both
+                if (isHost) {
+                    let count = 3;
+                    const countInt = setInterval(() => {
+                        sendPeerData({ type: 'COUNTDOWN', count });
+                        handleCountdown(count);
+                        count--;
+                        if (count < 0) {
+                            clearInterval(countInt);
+                            sendPeerData({ type: 'START_FIGHT' });
+                            startMultiplayerMatch();
+                        }
+                    }, 1000);
+                }
+            });
+
+            peerConn.on('data', (data) => {
+                handlePeerData(data);
+            });
+
+            peerConn.on('close', () => {
+                setNetStatus('🔴 FRIEND DISCONNECTED', '#ff0055');
+                if (gameState.active) {
+                    alert('Friend disconnected from battle.');
+                    endMatch(false);
+                }
+            });
+        }
+
+        function sendPeerData(data) {
+            if (peerConn && peerConn.open) {
+                peerConn.send(data);
+            }
+        }
+
+        function handleCountdown(c) {
+            const cdElem = document.getElementById('countdown-overlay');
+            cdElem.innerText = c > 0 ? c : 'FIGHT!';
+            audio.playTone(400 + (3 - c) * 200, 'sine', 0.15, 0.2);
+        }
+
+        function handlePeerData(data) {
+            switch (data.type) {
+                case 'ROOM_FULL':
+                    alert('Room is full! (Maximum 2 players)');
+                    showScreen('screen-friend');
+                    break;
+                case 'COUNTDOWN':
+                    handleCountdown(data.count);
+                    break;
+                case 'START_FIGHT':
+                    startMultiplayerMatch();
+                    break;
+                case 'POS':
+                    // Invert X position relative to camera view
+                    gameState.opponent.x = -data.x;
+                    gameState.opponent.y = data.y;
+                    break;
+                case 'FIRE':
+                    audio.playFire();
+                    gameState.projectiles.push({
+                        x: canvas.width / 2 + gameState.opponent.x,
+                        y: canvas.height / 2 + gameState.opponent.y,
+                        targetX: canvas.width / 2,
+                        targetY: canvas.height / 2,
+                        progress: 0,
+                        color: '#ff0055'
+                    });
+                    break;
+                case 'HIT':
+                    // Local player got hit by friend
+                    if (gameState.player.shield > 0) {
+                        gameState.player.shield = Math.max(0, gameState.player.shield - data.damage);
+                    } else {
+                        gameState.player.hp = Math.max(0, gameState.player.hp - data.damage);
+                    }
+                    audio.playHit();
+                    updateHUD();
+                    if (CONFIG.vibe === 'ON' && navigator.vibrate) navigator.vibrate(80);
+
+                    // Sync HP change back to friend
+                    sendPeerData({ type: 'STATUS_SYNC', hp: gameState.player.hp, shield: gameState.player.shield });
+
+                    if (gameState.player.hp <= 0) {
+                        sendPeerData({ type: 'PLAYER_DIED' });
+                        endMultiplayerMatch(false); // Lost
+                    }
+                    break;
+                case 'STATUS_SYNC':
+                    gameState.opponent.hp = data.hp;
+                    gameState.opponent.shield = data.shield;
+                    updateHUD();
+                    break;
+                case 'PLAYER_DIED':
+                    endMultiplayerMatch(true); // Won
+                    break;
+                case 'REMATCH_REQ':
+                    document.getElementById('lobby-status-text').innerText = 'Friend requested Rematch!';
+                    showScreen('screen-lobby');
+                    if (isHost) {
+                        let count = 3;
+                        const countInt = setInterval(() => {
+                            sendPeerData({ type: 'COUNTDOWN', count });
+                            handleCountdown(count);
+                            count--;
+                            if (count < 0) {
+                                clearInterval(countInt);
+                                sendPeerData({ type: 'START_FIGHT' });
+                                startMultiplayerMatch();
+                            }
+                        }, 1000);
+                    }
+                    break;
+            }
+        }
+
+        /* --- MATCH LIFECYCLE MANAGEMENT --- */
+        async function startSoloMatch(isPractice = false) {
+            multiplayerActive = false;
+            document.getElementById('opponent-name-label').innerText = 'BOT HP';
+            document.getElementById('btn-rematch').style.display = 'none';
+
+            audio.init();
+            const hasCam = await initCamera();
+            if (!hasCam && !isPractice) {
+                showScreen('screen-permission');
+                return;
+            }
+
+            gameState = {
+                active: true, score: 0, timeRemaining: 120,
+                shotsFired: 0, shotsHit: 0, eliminations: 0,
+                player: { hp: 100, shield: 50, x: 0, y: 0 },
+                opponent: { hp: 100, shield: 50, x: 0, y: 0, z: 200, name: 'BOT', isDead: false },
+                enemies: [new EnemyBot('BOT-01')],
+                projectiles: [], particles: []
+            };
+
+            updateHUD();
+            hideAllScreens();
+            startMatchTimer();
+            requestAnimationFrame(gameLoop);
+        }
+
+        async function startMultiplayerMatch() {
+            multiplayerActive = true;
+            document.getElementById('opponent-name-label').innerText = 'FRIEND HP';
+            document.getElementById('btn-rematch').style.display = 'flex';
+
+            audio.init();
+            await initCamera();
+
+            gameState = {
+                active: true, score: 0, timeRemaining: 120,
+                shotsFired: 0, shotsHit: 0, eliminations: 0,
+                player: { hp: 100, shield: 50, x: 0, y: 0 },
+                opponent: { hp: 100, shield: 50, x: 0, y: 0, z: 200, name: 'FRIEND', isDead: false },
+                enemies: [], projectiles: [], particles: []
+            };
+
+            updateHUD();
+            hideAllScreens();
+            startMatchTimer();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startMatchTimer() {
+            clearInterval(matchTimerInterval);
+            matchTimerInterval = setInterval(() => {
+                gameState.timeRemaining--;
+                const mins = String(Math.floor(gameState.timeRemaining / 60)).padStart(2, '0');
+                const secs = String(gameState.timeRemaining % 60).padStart(2, '0');
+                document.getElementById('match-timer').innerText = `${mins}:${secs}`;
+
+                if (gameState.timeRemaining <= 0) {
+                    if (multiplayerActive) {
+                        endMultiplayerMatch(gameState.player.hp >= gameState.opponent.hp);
+                    } else {
+                        endMatch(true);
+                    }
+                }
+            }, 1000);
+        }
+
+        function endMatch(completed = true) {
+            gameState.active = false;
+            clearInterval(matchTimerInterval);
+
+            const acc = gameState.shotsFired > 0 ? Math.round((gameState.shotsHit / gameState.shotsFired) * 100) : 0;
+            document.getElementById('res-score').innerText = gameState.score;
+            document.getElementById('res-elims').innerText = gameState.eliminations;
+            document.getElementById('res-acc').innerText = `${acc}%`;
+            document.getElementById('results-title').innerText = completed ? 'MATCH OVER' : 'DEFEATED';
+            document.getElementById('results-subtitle').innerText = 'OPERATIONAL SUMMARY';
+
+            showScreen('screen-results');
+        }
+
+        function endMultiplayerMatch(isWinner) {
+            gameState.active = false;
+            clearInterval(matchTimerInterval);
+
+            const acc = gameState.shotsFired > 0 ? Math.round((gameState.shotsHit / gameState.shotsFired) * 100) : 0;
+            document.getElementById('res-score').innerText = gameState.score;
+            document.getElementById('res-elims').innerText = isWinner ? 1 : 0;
+            document.getElementById('res-acc').innerText = `${acc}%`;
+
+            const titleElem = document.getElementById('results-title');
+            if (isWinner) {
+                titleElem.innerText = 'YOU WIN! 🎉';
+                titleElem.style.color = '#00ff88';
+                audio.playEliminated();
+            } else {
+                titleElem.innerText = 'YOU LOSE! 💀';
+                titleElem.style.color = '#ff0055';
+            }
+
+            showScreen('screen-results');
+        }
+
+        /* --- TOUCH & JOYSTICK CONTROLS --- */
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickStick = document.getElementById('joystick-stick');
+        let joystickActive = false;
+        let joyTouchId = null;
+
+        joystickZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            joyTouchId = e.changedTouches[0].identifier;
+            joystickActive = true;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!joystickActive) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joyTouchId) {
+                    const touch = e.changedTouches[i];
+                    const rect = joystickZone.getBoundingClientRect();
+                    let dx = touch.clientX - (rect.left + rect.width / 2);
+                    let dy = touch.clientY - (rect.top + rect.height / 2);
+                    const maxDist = 30;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist > maxDist) {
+                        dx = (dx / dist) * maxDist;
+                        dy = (dy / dist) * maxDist;
+                    }
+
+                    joystickStick.style.transform = `translate(${dx}px, ${dy}px)`;
+
+                    // Move local player in AR space
+                    gameState.player.x += (dx / maxDist) * 3 * CONFIG.sens;
+                    gameState.player.y += (dy / maxDist) * 3 * CONFIG.sens;
+                }
+            }
+        });
+
+        const resetJoystick = () => {
+            joystickActive = false;
+            joyTouchId = null;
+            joystickStick.style.transform = 'translate(0px, 0px)';
+        };
+        window.addEventListener('touchend', resetJoystick);
+        window.addEventListener('touchcancel', resetJoystick);
+
+        // Mouse Controls Desktop Fallback
+        window.addEventListener('mousemove', (e) => {
+            if (gameState.active && !('ontouchstart' in window)) {
+                gameState.player.x += (e.movementX || 0) * CONFIG.sens;
+                gameState.player.y += (e.movementY || 0) * CONFIG.sens;
+            }
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            if (gameState.active && e.button === 0 && e.target.tagName !== 'BUTTON') {
+                fireWeapon();
+            }
+        });
+
+        /* --- UI SCREEN NAVIGATION & BUTTONS --- */
+        function hideAllScreens() {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        }
+        function showScreen(id) {
+            hideAllScreens();
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        // Gameplay Buttons
+        document.getElementById('fire-btn').addEventListener('click', fireWeapon);
+        document.getElementById('fire-btn').addEventListener('touchstart', (e) => { e.preventDefault(); fireWeapon(); });
+
+        document.getElementById('reload-btn').addEventListener('click', () => {
+            audio.playTone(800, 'sine', 0.2, 0.1);
+            spawnParticles(canvas.width / 2, canvas.height / 2, '#00ff88', 10);
+        });
+
+        document.getElementById('ability-btn').addEventListener('click', () => {
+            if (gameState.player.shield < 50) {
+                gameState.player.shield = Math.min(50, gameState.player.shield + 25);
+                updateHUD();
+                if (multiplayerActive) sendPeerData({ type: 'STATUS_SYNC', hp: gameState.player.hp, shield: gameState.player.shield });
+                audio.playTone(300, 'triangle', 0.25, 0.2);
+            }
+        });
+
+        // Navigation Menu Buttons
+        document.getElementById('btn-play').addEventListener('click', () => {
+            showScreen('screen-matchmaking');
+            checkLocation((hasGeo) => {
+                document.getElementById('geo-status').innerText = hasGeo ? "GPS Active. Launching Solo Match..." : "No GPS. Launching Practice Bot...";
+                setTimeout(() => startSoloMatch(false), 1200);
+            });
+        });
+
+        document.getElementById('btn-friend-menu').addEventListener('click', () => showScreen('screen-friend'));
+        document.getElementById('btn-back-friend').addEventListener('click', () => showScreen('screen-menu'));
+        document.getElementById('btn-cancel-match').addEventListener('click', () => showScreen('screen-menu'));
+        document.getElementById('btn-practice').addEventListener('click', () => startSoloMatch(true));
+        document.getElementById('btn-settings').addEventListener('click', () => showScreen('screen-settings'));
+        document.getElementById('btn-try-camera').addEventListener('click', () => startSoloMatch(false));
+        document.getElementById('btn-fallback-mode').addEventListener('click', () => startSoloMatch(true));
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            if (peer) peer.destroy();
+            setNetStatus('🟢 SINGLE PLAYER', '#64748b');
+            showScreen('screen-menu');
+        });
+
+        // Create Room Logic
+        document.getElementById('btn-create-room').addEventListener('click', () => {
+            isHost = true;
+            currentRoomCode = generateRoomCode();
+            const fullPeerId = MULTIPLAYER_CONFIG.prefix + currentRoomCode.toLowerCase();
+
+            initPeerServer(fullPeerId, () => {
+                document.getElementById('created-room-box').style.display = 'block';
+                document.getElementById('display-room-code').innerText = currentRoomCode;
+                document.getElementById('lobby-room-header').innerText = `ROOM: ${currentRoomCode}`;
+                showScreen('screen-lobby');
+            });
+        });
+
+        // Join Room Logic
+        document.getElementById('btn-join-room').addEventListener('click', () => {
+            const codeInput = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (codeInput.length < 4) {
+                alert('Please enter a valid Room Code.');
+                return;
+            }
+
+            isHost = false;
+            currentRoomCode = codeInput;
+            const targetPeerId = MULTIPLAYER_CONFIG.prefix + currentRoomCode.toLowerCase();
+
+            initPeerServer(null, () => {
+                document.getElementById('lobby-room-header').innerText = `ROOM: ${currentRoomCode}`;
+                document.getElementById('lobby-status-text').innerText = 'CONNECTING TO HOST...';
+                showScreen('screen-lobby');
+
+                peerConn = peer.connect(targetPeerId);
+                setupPeerEvents();
+            });
+        });
+
+        // Copy & Share Code
+        document.getElementById('btn-copy-code').addEventListener('click', () => {
+            navigator.clipboard.writeText(currentRoomCode);
+            alert('CODE COPIED TO CLIPBOARD!');
+        });
+
+        document.getElementById('btn-share-code').addEventListener('click', () => {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'AR Battle Room Code',
+                    text: `Join my AR Battle match with code: ${currentRoomCode}`
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(currentRoomCode);
+                alert('CODE COPIED!');
+            }
+        });
+
+        // Rematch & Leave Lobby
+        document.getElementById('btn-rematch').addEventListener('click', () => {
+            sendPeerData({ type: 'REMATCH_REQ' });
+            document.getElementById('lobby-status-text').innerText = 'Waiting for Friend to accept...';
+            showScreen('screen-lobby');
+        });
+
+        document.getElementById('btn-leave-lobby').addEventListener('click', () => {
+            if (peer) peer.destroy();
+            setNetStatus('🟢 SINGLE PLAYER', '#64748b');
+            showScreen('screen-friend');
+        });
+
+        // Settings Save
+        document.getElementById('btn-save-settings').addEventListener('click', () => {
+            CONFIG.graphics = document.getElementById('setting-graphics').value;
+            CONFIG.sound = document.getElementById('setting-sound').value;
+            CONFIG.vibe = document.getElementById('setting-vibe').value;
+            CONFIG.battery = document.getElementById('setting-battery').value;
+            CONFIG.sens = parseFloat(document.getElementById('setting-sens').value);
+
+            localStorage.setItem('ar_graphics', CONFIG.graphics);
+            localStorage.setItem('ar_sound', CONFIG.sound);
+            localStorage.setItem('ar_vibe', CONFIG.vibe);
+            localStorage.setItem('ar_battery', CONFIG.battery);
+            localStorage.setItem('ar_sens', CONFIG.sens);
+
+            showScreen('screen-menu');
+        });
+
+        // Populate Saved Settings
+        document.getElementById('setting-graphics').value = CONFIG.graphics;
+        document.getElementById('setting-sound').value = CONFIG.sound;
+        document.getElementById('setting-vibe').value = CONFIG.vibe;
+        document.getElementById('setting-battery').value = CONFIG.battery;
+        document.getElementById('setting-sens').value = CONFIG.sens;
+    </script>
+</body>
+</html>
