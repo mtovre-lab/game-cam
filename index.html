@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR GPS Shooter - Web Browser Prototype</title>
+    <title>True AR World Shooter - Horizontal Plane Edition</title>
     <style>
         * {
             box-sizing: border-box;
@@ -11,25 +11,25 @@
             -webkit-user-select: none;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
         body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #050505;
+            background-color: #000;
             color: #fff;
         }
 
-        #game-container {
+        #app-container {
             position: relative;
             width: 100vw;
             height: 100vh;
             overflow: hidden;
         }
 
-        /* Video feed background */
+        /* Video Feed (Real Camera) */
         #camera-feed {
             position: absolute;
             top: 0;
@@ -40,8 +40,8 @@
             z-index: 1;
         }
 
-        /* Overlay Game Canvas */
-        #game-canvas {
+        /* Overlay Canvas for World Entities Rendering */
+        #ar-canvas {
             position: absolute;
             top: 0;
             left: 0;
@@ -49,51 +49,6 @@
             height: 100%;
             z-index: 2;
             pointer-events: none;
-        }
-
-        /* Permission Screen */
-        #permission-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(10, 14, 23, 0.95);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .card {
-            background: #111827;
-            border: 1px solid #1f2937;
-            box-shadow: 0 10px 25px rgba(0,255,204, 0.1);
-            border-radius: 16px;
-            padding: 28px;
-            max-width: 450px;
-            width: 100%;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #00ffcc 0%, #0099ff 100%);
-            border: none;
-            color: #000;
-            font-weight: bold;
-            padding: 14px 28px;
-            font-size: 1.1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 20px;
-            transition: all 0.2s ease;
-            width: 100%;
-        }
-
-        .btn:active {
-            transform: scale(0.97);
         }
 
         /* HUD Layer */
@@ -111,47 +66,44 @@
             padding: 16px;
         }
 
-        .hud-top {
+        .hud-row {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             gap: 10px;
         }
 
-        .hud-box {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 10px 16px;
-            border-radius: 10px;
+        .hud-card {
+            background: rgba(10, 15, 26, 0.75);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 204, 0.25);
+            padding: 10px 14px;
+            border-radius: 12px;
             min-width: 110px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        .hud-title {
-            font-size: 0.75rem;
+        .hud-label {
+            font-size: 0.7rem;
             color: #94a3b8;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .hud-value {
-            font-size: 1.3rem;
+        .hud-val {
+            font-size: 1.2rem;
             font-weight: 800;
-            color: #38bdf8;
-        }
-
-        /* HP Bar */
-        .hp-container {
-            width: 100%;
-            max-width: 200px;
+            color: #00ffcc;
+            margin-top: 2px;
         }
 
         .hp-bar-outer {
-            width: 100%;
-            height: 14px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 7px;
+            width: 140px;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 6px;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             margin-top: 4px;
         }
 
@@ -159,81 +111,113 @@
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, #ef4444, #22c55e);
-            transition: width 0.2s ease;
+            transition: width 0.15s ease-out;
         }
 
-        /* Crosshair */
+        /* Fixed Center Crosshair */
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 32px;
-            height: 32px;
-            z-index: 15;
+            width: 36px;
+            height: 36px;
+            z-index: 12;
             pointer-events: none;
         }
 
         #crosshair::before, #crosshair::after {
             content: '';
             position: absolute;
-            background: rgba(0, 255, 204, 0.85);
+            background: rgba(0, 255, 204, 0.9);
             box-shadow: 0 0 8px #00ffcc;
         }
 
         #crosshair::before {
-            top: 15px; left: 0; width: 32px; height: 2px;
+            top: 17px; left: 0; width: 36px; height: 2px;
         }
+
         #crosshair::after {
-            top: 0; left: 15px; width: 2px; height: 32px;
+            top: 0; left: 17px; width: 2px; height: 36px;
+        }
+
+        #crosshair-dot {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px; height: 6px;
+            background: #ff0055;
+            border-radius: 50%;
+            box-shadow: 0 0 6px #ff0055;
         }
 
         #hit-marker {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%) rotate(45deg);
-            width: 24px;
-            height: 24px;
+            width: 28px; height: 28px;
             opacity: 0;
             transition: opacity 0.05s ease;
             pointer-events: none;
-            z-index: 16;
+            z-index: 13;
         }
 
         #hit-marker::before, #hit-marker::after {
             content: ''; position: absolute; background: #ff0055;
         }
-        #hit-marker::before { top: 11px; left: 0; width: 24px; height: 2px; }
-        #hit-marker::after { top: 0; left: 11px; width: 2px; height: 24px; }
+        #hit-marker::before { top: 13px; left: 0; width: 28px; height: 2px; }
+        #hit-marker::after { top: 0; left: 13px; width: 2px; height: 28px; }
 
-        /* HUD Bottom */
-        .hud-bottom {
+        /* Off-Screen Radar Pointer */
+        #radar-pointer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            z-index: 11;
+            pointer-events: none;
+            display: none;
+        }
+
+        #radar-pointer-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-bottom: 24px solid #00ffcc;
+            filter: drop-shadow(0 0 8px #00ffcc);
+            transform: translate(-50%, -50%);
+        }
+
+        /* Action Buttons Controls */
+        .controls-bottom {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
             pointer-events: auto;
         }
 
-        .controls-group {
+        .btn-group {
             display: flex;
             gap: 12px;
         }
 
         .action-btn {
-            background: rgba(15, 23, 42, 0.85);
+            background: rgba(10, 15, 26, 0.85);
             border: 2px solid #00ffcc;
             color: #00ffcc;
-            width: 70px;
-            height: 70px;
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-weight: bold;
-            font-size: 0.9rem;
+            font-weight: 800;
+            font-size: 0.85rem;
             cursor: pointer;
-            box-shadow: 0 0 15px rgba(0,255,204, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
             touch-action: manipulation;
         }
 
@@ -243,190 +227,230 @@
         }
 
         #shoot-btn {
-            width: 85px;
-            height: 85px;
-            border-color: #ef4444;
-            color: #ef4444;
-            box-shadow: 0 0 15px rgba(239,68,68, 0.4);
+            width: 88px;
+            height: 88px;
+            border-color: #ff0055;
+            color: #ff0055;
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.4);
         }
 
         #shoot-btn:active {
-            background: #ef4444;
+            background: #ff0055;
             color: #fff;
         }
 
         /* Banner Messages */
-        #banner-msg {
+        #status-banner {
             position: absolute;
-            top: 20%;
+            top: 25%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: 900;
-            color: #ff2a6d;
-            text-shadow: 0 0 10px #ff2a6d;
+            color: #ff0055;
+            text-shadow: 0 0 12px rgba(255, 0, 85, 0.8);
             opacity: 0;
             transition: opacity 0.3s ease;
             pointer-events: none;
             z-index: 20;
             text-align: center;
+            white-space: nowrap;
         }
 
-        /* Touch Look Area */
-        #touch-controller {
+        /* Permissions Screen */
+        #permission-screen {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 5;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(5, 8, 15, 0.96);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            text-align: center;
         }
 
-        /* Privacy Info Box */
-        .privacy-box {
-            font-size: 0.8rem;
-            color: #64748b;
+        .card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            box-shadow: 0 10px 30px rgba(0,255,204, 0.15);
+            border-radius: 20px;
+            padding: 30px 24px;
+            max-width: 480px;
+            width: 100%;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #00ffcc 0%, #0099ff 100%);
+            border: none;
+            color: #000;
+            font-weight: 800;
+            padding: 16px 32px;
+            font-size: 1.15rem;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-top: 24px;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-start:active {
+            transform: scale(0.97);
+        }
+
+        .sensor-error-msg {
+            color: #ff4757;
+            font-weight: bold;
+            font-size: 1.1rem;
+            line-height: 1.6;
             margin-top: 15px;
-            line-height: 1.4;
+            display: none;
         }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <!-- Camera Video Layer -->
+<div id="app-container">
+    <!-- Camera Feed Background -->
     <video id="camera-feed" autoplay playsinline muted></video>
 
-    <!-- Canvas Layer for AR Rendering -->
-    <canvas id="game-canvas"></canvas>
+    <!-- Canvas for Horizontal Entity Projection -->
+    <canvas id="ar-canvas"></canvas>
 
-    <!-- Touch Control Interface -->
-    <div id="touch-controller"></div>
-
-    <!-- Crosshair & Hit Marker -->
-    <div id="crosshair"></div>
+    <!-- Fixed Crosshair & Pointer -->
+    <div id="crosshair"><div id="crosshair-dot"></div></div>
     <div id="hit-marker"></div>
+    <div id="radar-pointer"><div id="radar-pointer-arrow"></div></div>
 
-    <!-- Announcement Banner -->
-    <div id="banner-msg">ENEMY DOWN!</div>
+    <!-- Banner Notification -->
+    <div id="status-banner">TARGET DEFEATED</div>
 
     <!-- HUD Overlay -->
     <div id="hud-layer">
-        <div class="hud-top">
-            <div class="hud-box hp-container">
-                <div class="hud-title">Health</div>
+        <div class="hud-row">
+            <div class="hud-card">
+                <div class="hud-label">Player Health</div>
                 <div class="hp-bar-outer">
                     <div id="hp-bar" class="hp-bar-inner"></div>
                 </div>
             </div>
 
-            <div class="hud-box" style="text-align: center;">
-                <div class="hud-title">Radar / Enemy</div>
-                <div id="enemy-dist" class="hud-value">-- m</div>
+            <div class="hud-card" style="text-align: center;">
+                <div class="hud-label">Monster Dist</div>
+                <div id="monster-dist" class="hud-val">-- m</div>
             </div>
 
-            <div class="hud-box" style="text-align: left;">
-                <div class="hud-title">Kills</div>
-                <div id="kill-count" class="hud-value">0</div>
+            <div class="hud-card" style="text-align: left;">
+                <div class="hud-label">Score / Kills</div>
+                <div id="kill-count" class="hud-val">0</div>
             </div>
         </div>
 
-        <div class="hud-bottom">
-            <div class="hud-box">
-                <div class="hud-title">Ammo</div>
-                <div id="ammo-val" class="hud-value">12 / ∞</div>
+        <div class="hud-row">
+            <div class="hud-card" style="background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1);">
+                <div class="hud-label">Phone Heading</div>
+                <div id="debug-heading" class="hud-val" style="font-size:0.9rem; color:#cbd5e1;">0°</div>
+            </div>
+            <div class="hud-card" style="background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1); text-align:left;">
+                <div class="hud-label">Monster Bearing</div>
+                <div id="debug-bearing" class="hud-val" style="font-size:0.9rem; color:#cbd5e1;">0°</div>
+            </div>
+        </div>
+
+        <div class="controls-bottom">
+            <div class="hud-card">
+                <div class="hud-label">Ammo</div>
+                <div id="ammo-val" class="hud-val">10 / ∞</div>
             </div>
 
-            <div class="controls-group">
+            <div class="btn-group">
                 <button id="reload-btn" class="action-btn">RELOAD</button>
                 <button id="shoot-btn" class="action-btn">FIRE</button>
             </div>
         </div>
     </div>
 
-    <!-- Permissions Modal -->
+    <!-- Startup Permission Screen -->
     <div id="permission-screen">
         <div class="card">
-            <h2 style="color: #00ffcc; margin-bottom: 12px;">تجهيز المعركة AR</h2>
-            <p style="color: #cbd5e1; line-height: 1.6; margin-bottom: 20px;">
-                لشروع في اللعب، تحتاج اللعبة للوصول إلى:
-                <br>• <strong>الكاميرا:</strong> لإسقاط الأعداء داخل محيطك الواقعي.
-                <br>• <strong>الموقع (GPS):</strong> لتحديد المواقع النسبية بدقة.
+            <h2 style="color: #00ffcc; margin-bottom: 12px; font-size: 1.6rem;">True AR World Shooter</h2>
+            <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">
+                العدو يتواجد دائماً على <strong>المستوى الأفقي المباشر للاعب</strong> (لا يوجد عدو في الهواء أو أسفل الأرض).
+                <br><br>
+                دور هاتفك أفقياً (يمين وشمال) للبحث عنه ومحاذاته مع Crosshair الشاشة!
             </p>
-            <button id="start-btn" class="btn">بدء اللعبة والسماح بالصلاحيات</button>
-            <div class="privacy-box">
-                🔒 **تنبيه الخصوصية:** البيانات تُعالج لحظياً داخل متصفحك فقط ولن يتم تجميعها أو مشاركتها نهائياً.
+            <button id="start-btn" class="btn-start">تفعيل المستشعرات والكاميرا والبدء</button>
+            <div id="sensor-error" class="sensor-error-msg">
+                هذا الجهاز لا يدعم مستشعر اتجاه الهاتف المطلوب لهذه اللعبة.
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    /**
-     * Engine State & Configuration
-     */
+    /* =========================================================================
+     * 1. Core Configuration & Engine State
+     * ========================================================================= */
     const CONFIG = {
-        fov: 60, // Field of view in degrees
-        maxDistance: 50, // Max distance to render enemy (meters)
-        gpsInterval: 1000, // Throttling GPS updates
-        cameraSmoothness: 0.15
+        fovHorizontal: 60,   // Camera Field of View in Degrees
+        smoothFactor: 0.15   // Smooth interpolation for orientation
     };
 
     const state = {
         player: {
             lat: null,
             lon: null,
-            heading: 0, // In degrees 0..360 (0=North, 90=East)
-            manualYawOffset: 0, // Mouse/Touch override
+            heading: 0,          // Phone Heading Angle (0..360)
+            smoothedHeading: 0,  // Smooth Heading for Engine
             hp: 100,
             maxHp: 100,
-            ammo: 12,
-            maxAmmo: 12,
+            ammo: 10,
+            maxAmmo: 10,
             kills: 0,
-            score: 0,
             isReloading: false
         },
-        enemy: {
+        monster: {
             lat: null,
             lon: null,
-            distance: 0,
-            bearing: 0,
-            relativeAngle: 0,
+            distance: 0,        // Horizontal Distance in Meters
+            bearing: 0,         // Absolute Bearing (0..360)
+            relativeAngle: 0,   // Horizontal relative angle to camera
             hp: 100,
             maxHp: 100,
-            alive: true,
-            size: 80, // Render size
-            hitRadius: 60,
-            screenX: -999,
-            screenY: -999
+            alive: false,
+            screenX: -999,      // Screen Projection X
+            screenY: -999,      // Fixed Horizontal Center Line Y
+            screenRadius: 0,    // Hit Collision Radius
+            walkPhase: 0
         },
-        controls: {
-            isMouseDown: false,
-            lastTouchX: 0,
-            touchActive: false
-        },
+        hasOrientationSensor: false,
         audioCtx: null
     };
 
     // DOM Elements
     const video = document.getElementById('camera-feed');
-    const canvas = document.getElementById('game-canvas');
+    const canvas = document.getElementById('ar-canvas');
     const ctx = canvas.getContext('2d');
     const permScreen = document.getElementById('permission-screen');
     const startBtn = document.getElementById('start-btn');
+    const sensorErrorMsg = document.getElementById('sensor-error');
     const hpBar = document.getElementById('hp-bar');
-    const enemyDistText = document.getElementById('enemy-dist');
+    const monsterDistText = document.getElementById('monster-dist');
     const killCountText = document.getElementById('kill-count');
     const ammoValText = document.getElementById('ammo-val');
+    const debugHeading = document.getElementById('debug-heading');
+    const debugBearing = document.getElementById('debug-bearing');
     const shootBtn = document.getElementById('shoot-btn');
     const reloadBtn = document.getElementById('reload-btn');
     const hitMarker = document.getElementById('hit-marker');
-    const bannerMsg = document.getElementById('banner-msg');
-    const touchArea = document.getElementById('touch-controller');
+    const statusBanner = document.getElementById('status-banner');
+    const radarPointer = document.getElementById('radar-pointer');
 
-    /* -------------------------------------------------------------
-     * 1. Audio Synthesizer (Web Audio API - No External Files)
-     * ------------------------------------------------------------- */
+    /* =========================================================================
+     * 2. Audio Engine (Web Audio API)
+     * ========================================================================= */
     function initAudio() {
         if (!state.audioCtx) {
             state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -435,67 +459,67 @@
 
     function playSound(type) {
         if (!state.audioCtx) return;
-        const ctx = state.audioCtx;
-        const now = ctx.currentTime;
+        const audioCtx = state.audioCtx;
+        const now = audioCtx.currentTime;
 
         if (type === 'shoot') {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(600, now);
-            osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.18);
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
             osc.connect(gain);
-            gain.connect(ctx.destination);
+            gain.connect(audioCtx.destination);
             osc.start(now);
-            osc.stop(now + 0.15);
+            osc.stop(now + 0.18);
         } else if (type === 'hit') {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
             osc.type = 'square';
-            osc.frequency.setValueAtTime(150, now);
-            osc.frequency.exponentialRampToValueAtTime(30, now + 0.1);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
             osc.connect(gain);
-            gain.connect(ctx.destination);
+            gain.connect(audioCtx.destination);
             osc.start(now);
-            osc.stop(now + 0.1);
+            osc.stop(now + 0.12);
         } else if (type === 'reload') {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(400, now);
-            osc.frequency.linearRampToValueAtTime(800, now + 0.2);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.linearRampToValueAtTime(700, now + 0.25);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
             osc.connect(gain);
-            gain.connect(ctx.destination);
+            gain.connect(audioCtx.destination);
             osc.start(now);
-            osc.stop(now + 0.2);
+            osc.stop(now + 0.25);
         }
     }
 
-    /* -------------------------------------------------------------
-     * 2. Spatial / GPS & Math Computations
-     * ------------------------------------------------------------- */
-    function toRad(deg) { return deg * Math.PI / 180; }
-    function toDeg(rad) { return rad * 180 / Math.PI; }
+    /* =========================================================================
+     * 3. Math & 2D Horizontal Coordinate Calculations
+     * ========================================================================= */
+    const toRad = (deg) => deg * Math.PI / 180;
+    const toDeg = (rad) => rad * 180 / Math.PI;
 
-    // Haversine Formula for Distance
+    // 2D Horizontal Distance
     function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371000; // Earth radius in meters
+        const R = 6371000;
         const dLat = toRad(lat2 - lat1);
         const dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                   Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
 
-    // Bearing Calculation (Angle from North to Enemy)
+    // Horizontal Absolute Bearing (0..360)
     function calculateBearing(lat1, lon1, lat2, lon2) {
         const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
         const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
@@ -504,92 +528,122 @@
         return (toDeg(brng) + 360) % 360;
     }
 
-    // Normalizing angles between -180 and 180
-    function normalizeAngle(angle) {
-        angle = angle % 360;
-        if (angle > 180) angle -= 360;
-        if (angle < -180) angle += 360;
-        return angle;
+    // Angle Normalization (-180..+180)
+    function normalizeAngle(deg) {
+        deg = deg % 360;
+        if (deg > 180) deg -= 360;
+        if (deg < -180) deg += 360;
+        return deg;
     }
 
-    // Spawn a mock target near current player position
-    function spawnMockEnemy() {
+    // Spawn Monster strictly on the Horizontal Map Plane
+    function spawnMonsterInWorld() {
         if (!state.player.lat || !state.player.lon) return;
 
-        // Offset player coordinates randomly within ~10 to 25 meters
-        const randomAngle = Math.random() * 2 * Math.PI;
-        const distanceDegrees = (15 + Math.random() * 10) / 111320; // 1 deg ~ 111km
+        const distMeters = 8 + Math.random() * 14;
+        const angleRad = Math.random() * 2 * Math.PI;
 
-        state.enemy.lat = state.player.lat + distanceDegrees * Math.cos(randomAngle);
-        state.enemy.lon = state.player.lon + distanceDegrees * Math.sin(randomAngle);
-        state.enemy.hp = state.enemy.maxHp;
-        state.enemy.alive = true;
+        const deltaLat = (distMeters * Math.cos(angleRad)) / 111320;
+        const deltaLon = (distMeters * Math.sin(angleRad)) / (111320 * Math.cos(toRad(state.player.lat)));
+
+        state.monster.lat = state.player.lat + deltaLat;
+        state.monster.lon = state.player.lon + deltaLon;
+        state.monster.hp = state.monster.maxHp;
+        state.monster.alive = true;
+
+        showBanner("NEW MONSTER SPOTTED ON YOUR HORIZON!");
     }
 
-    /* -------------------------------------------------------------
-     * 3. Hardware Permissions & Initialization
-     * ------------------------------------------------------------- */
-    async function initPermissions() {
+    /* =========================================================================
+     * 4. Device Sensors Initialization
+     * ========================================================================= */
+    async function setupDeviceOrientation() {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            try {
+                const permissionState = await DeviceOrientationEvent.requestPermission();
+                if (permissionState === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientation, true);
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (e) {
+                return false;
+            }
+        } else if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+            return true;
+        }
+        return false;
+    }
+
+    function handleOrientation(e) {
+        let heading = null;
+
+        if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
+            heading = e.webkitCompassHeading; // iOS Safari
+        } else if (e.alpha !== null) {
+            heading = (360 - e.alpha) % 360;  // Android Standard
+        }
+
+        if (heading !== null && !isNaN(heading)) {
+            state.player.heading = heading;
+            state.hasOrientationSensor = true;
+        }
+    }
+
+    /* =========================================================================
+     * 5. App Setup
+     * ========================================================================= */
+    async function startARApp() {
         initAudio();
+
+        const orientationSupported = await setupDeviceOrientation();
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        if (!orientationSupported && !state.hasOrientationSensor) {
+            showSensorError();
+            return;
+        }
+
         try {
-            // Camera Stream
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
+                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
                 audio: false
             });
             video.srcObject = stream;
 
-            // Geolocation Setup
             if ('geolocation' in navigator) {
                 navigator.geolocation.watchPosition(
                     (pos) => {
                         state.player.lat = pos.coords.latitude;
                         state.player.lon = pos.coords.longitude;
 
-                        // Spawn initial enemy if first fix
-                        if (!state.enemy.lat) {
-                            spawnMockEnemy();
+                        if (!state.monster.lat) {
+                            spawnMonsterInWorld();
                         }
                     },
-                    (err) => { alert('تعذر الحصول على موقع GPS: ' + err.message); },
-                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+                    (err) => { console.warn("GPS Warning:", err.message); },
+                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 8000 }
                 );
             } else {
-                alert('جهازك لا يدعم تحديد الموقع (Geolocation)');
+                alert("جهازك لا يدعم صلاحية تحديد الموقع الجغرافي.");
             }
 
-            // Orientation Sensors
-            setupOrientationSensors();
-
-            // Hide Screen Modal
             permScreen.style.display = 'none';
-
-            // Resize Canvas
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
 
-            // Start Main Engine Loop
-            requestAnimationFrame(gameLoop);
+            requestAnimationFrame(renderEngine);
 
         } catch (err) {
-            alert('حدث خطأ أثناء منح الصلاحيات: ' + err.message + '\nيرجى منح الصلاحيات للبدء.');
+            alert("تعذر الوصول للكاميرا: " + err.message);
         }
     }
 
-    function setupOrientationSensors() {
-        if (window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', (e) => {
-                let compassHeading = null;
-                if (e.webkitCompassHeading) {
-                    compassHeading = e.webkitCompassHeading; // iOS
-                } else if (e.alpha !== null) {
-                    compassHeading = 360 - e.alpha; // Android standard
-                }
-                if (compassHeading !== null) {
-                    state.player.heading = compassHeading;
-                }
-            });
-        }
+    function showSensorError() {
+        startBtn.style.display = 'none';
+        sensorErrorMsg.style.display = 'block';
     }
 
     function resizeCanvas() {
@@ -597,53 +651,16 @@
         canvas.height = window.innerHeight;
     }
 
-    /* -------------------------------------------------------------
-     * 4. Input & Control Layer
-     * ------------------------------------------------------------- */
-    // Touch controls for camera rotation
-    touchArea.addEventListener('touchstart', (e) => {
-        state.controls.touchActive = true;
-        state.controls.lastTouchX = e.touches[0].clientX;
-    });
+    /* =========================================================================
+     * 6. Actions & Weapon Controls
+     * ========================================================================= */
+    shootBtn.addEventListener('click', handleShootAction);
+    reloadBtn.addEventListener('click', handleReloadAction);
 
-    touchArea.addEventListener('touchmove', (e) => {
-        if (!state.controls.touchActive) return;
-        const currentX = e.touches[0].clientX;
-        const deltaX = currentX - state.controls.lastTouchX;
-        state.player.manualYawOffset += deltaX * 0.25;
-        state.controls.lastTouchX = currentX;
-    });
-
-    touchArea.addEventListener('touchend', () => {
-        state.controls.touchActive = false;
-    });
-
-    // Mouse Controls (Desktop support)
-    window.addEventListener('mousedown', (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        state.controls.isMouseDown = true;
-        state.controls.lastTouchX = e.clientX;
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!state.controls.isMouseDown) return;
-        const deltaX = e.clientX - state.controls.lastTouchX;
-        state.player.manualYawOffset += deltaX * 0.3;
-        state.controls.lastTouchX = e.clientX;
-    });
-
-    window.addEventListener('mouseup', () => {
-        state.controls.isMouseDown = false;
-    });
-
-    // Combat Inputs
-    shootBtn.addEventListener('click', handleShoot);
-    reloadBtn.addEventListener('click', handleReload);
-
-    function handleShoot() {
+    function handleShootAction() {
         if (state.player.isReloading) return;
         if (state.player.ammo <= 0) {
-            handleReload();
+            handleReloadAction();
             return;
         }
 
@@ -651,49 +668,43 @@
         updateHUD();
         playSound('shoot');
 
-        // Check Hit Collision against screen crosshair
-        if (state.enemy.alive) {
+        // Check if Monster is aligned horizontally with Crosshair
+        if (state.monster.alive && state.monster.screenX !== -999) {
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
 
-            const dx = state.enemy.screenX - centerX;
-            const dy = state.enemy.screenY - centerY;
+            const dx = state.monster.screenX - centerX;
+            const dy = state.monster.screenY - centerY;
             const distToCrosshair = Math.sqrt(dx * dx + dy * dy);
 
-            if (distToCrosshair <= state.enemy.hitRadius) {
-                // Enemy Hit
-                triggerHit();
+            if (distToCrosshair <= state.monster.screenRadius) {
+                applyDamageToMonster();
             }
         }
     }
 
-    function triggerHit() {
-        const damage = 25 + Math.floor(Math.random() * 15);
-        state.enemy.hp -= damage;
+    function applyDamageToMonster() {
+        const dmg = 30 + Math.floor(Math.random() * 20);
+        state.monster.hp -= dmg;
         playSound('hit');
 
-        // UI Hit Marker Animation
         hitMarker.style.opacity = '1';
         setTimeout(() => { hitMarker.style.opacity = '0'; }, 100);
 
-        if (state.enemy.hp <= 0) {
-            // Enemy Defeated
-            state.enemy.alive = false;
+        if (state.monster.hp <= 0) {
+            state.monster.alive = false;
             state.player.kills++;
-            state.player.score += 100;
             updateHUD();
 
-            showBanner("ENEMY DOWN!");
+            showBanner("MONSTER ELIMINATED!");
 
-            // Respawn new target after 3 seconds
             setTimeout(() => {
-                spawnMockEnemy();
-                showBanner("TARGET SPOTTED!");
+                spawnMonsterInWorld();
             }, 3000);
         }
     }
 
-    function handleReload() {
+    function handleReloadAction() {
         if (state.player.isReloading || state.player.ammo === state.player.maxAmmo) return;
 
         state.player.isReloading = true;
@@ -707,10 +718,10 @@
         }, 1200);
     }
 
-    function showBanner(msg) {
-        bannerMsg.innerText = msg;
-        bannerMsg.style.opacity = '1';
-        setTimeout(() => { bannerMsg.style.opacity = '0'; }, 2000);
+    function showBanner(text) {
+        statusBanner.innerText = text;
+        statusBanner.style.opacity = '1';
+        setTimeout(() => { statusBanner.style.opacity = '0'; }, 2200);
     }
 
     function updateHUD() {
@@ -721,106 +732,145 @@
         }
     }
 
-    /* -------------------------------------------------------------
-     * 5. AR Engine: Rendering & Tracking Loop
-     * ------------------------------------------------------------- */
-    function gameLoop() {
-        // Clear Canvas
+    /* =========================================================================
+     * 7. Strictly Horizontal AR Rendering Loop
+     * ========================================================================= */
+    function renderEngine() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (state.player.lat && state.enemy.lat) {
-            // 1. Calculate Real GPS Metrics
-            state.enemy.distance = calculateDistance(
+        // Smooth Phone Heading Interpolation
+        let diff = normalizeAngle(state.player.heading - state.player.smoothedHeading);
+        state.player.smoothedHeading = (state.player.smoothedHeading + diff * CONFIG.smoothFactor + 360) % 360;
+
+        debugHeading.innerText = `${Math.round(state.player.smoothedHeading)}°`;
+
+        if (state.player.lat && state.monster.lat) {
+            // 1. Calculate 2D Horizontal Distance & Bearing
+            state.monster.distance = calculateDistance(
                 state.player.lat, state.player.lon,
-                state.enemy.lat, state.enemy.lon
+                state.monster.lat, state.monster.lon
             );
 
-            state.enemy.bearing = calculateBearing(
+            state.monster.bearing = calculateBearing(
                 state.player.lat, state.player.lon,
-                state.enemy.lat, state.enemy.lon
+                state.monster.lat, state.monster.lon
             );
 
-            // 2. Compute Total Effective Player Facing Direction (Heading + Manual Offset)
-            const currentTotalHeading = (state.player.heading + state.player.manualYawOffset) % 360;
+            debugBearing.innerText = `${Math.round(state.monster.bearing)}°`;
+            monsterDistText.innerText = `${Math.round(state.monster.distance)} m`;
 
-            // 3. Compute Relative Angle between Heading & Enemy Bearing
-            const relAngle = normalizeAngle(state.enemy.bearing - currentTotalHeading);
-            state.enemy.relativeAngle = relAngle;
+            // 2. Relative Horizontal Angle (Enemy Bearing - Real Phone Heading)
+            const relAngle = normalizeAngle(state.monster.bearing - state.player.smoothedHeading);
+            state.monster.relativeAngle = relAngle;
 
-            // 4. Update HUD Radar Info
-            enemyDistText.innerText = `${Math.round(state.enemy.distance)} m`;
+            const halfFOV = CONFIG.fovHorizontal / 2;
 
-            // 5. Check if Target lies within Camera FOV (-FOV/2 to +FOV/2)
-            const halfFOV = CONFIG.fov / 2;
-
-            if (state.enemy.alive && relAngle >= -halfFOV && relAngle <= halfFOV) {
-                // Calculate Horizontal Screen Offset
+            if (state.monster.alive && relAngle >= -halfFOV && relAngle <= halfFOV) {
+                // INSIDE HORIZONTAL CAMERA FOV
                 const screenCenterX = canvas.width / 2;
-                const screenCenterY = canvas.height / 2;
 
-                // Relative projection equation
+                // X position moves smoothly left or right depending on phone rotation
                 const xOffset = (relAngle / halfFOV) * (canvas.width / 2);
-                state.enemy.screenX = screenCenterX + xOffset;
-                state.enemy.screenY = screenCenterY; // Fixed horizon projection
+                state.monster.screenX = screenCenterX + xOffset;
 
-                // Render Target
-                renderEnemy(state.enemy.screenX, state.enemy.screenY, state.enemy.distance);
+                // STRICTLY HORIZONTAL: Y is locked 100% to the horizontal center line
+                state.monster.screenY = canvas.height / 2;
+
+                drawMonsterEntity(state.monster.screenX, state.monster.screenY, state.monster.distance);
+                radarPointer.style.display = 'none';
+
             } else {
-                // Target is outside viewport / behind player
-                state.enemy.screenX = -999;
-                state.enemy.screenY = -999;
+                // OUTSIDE HORIZONTAL FOV OR BEHIND PLAYER
+                state.monster.screenX = -999;
+                state.monster.screenY = -999;
+
+                if (state.monster.alive) {
+                    drawRadarPointer(relAngle);
+                } else {
+                    radarPointer.style.display = 'none';
+                }
             }
         }
 
-        requestAnimationFrame(gameLoop);
+        requestAnimationFrame(renderEngine);
     }
 
-    function renderEnemy(x, y, distance) {
+    // Draw Monster Entity on the Horizontal Plane
+    function drawMonsterEntity(x, y, dist) {
         ctx.save();
 
-        // Distance Scaling Factor
-        const scale = Math.max(0.4, Math.min(1.5, 20 / Math.max(5, distance)));
-        const renderSize = state.enemy.size * scale;
+        // Scale monster size based purely on horizontal distance
+        const distanceScale = Math.max(0.35, Math.min(1.6, 18 / Math.max(4, dist)));
+        const radius = 60 * distanceScale;
+        state.monster.screenRadius = radius;
 
-        // Draw Outer Target Aura
+        state.monster.walkPhase += 0.08;
+        const bobbingY = Math.sin(state.monster.walkPhase) * (8 * distanceScale);
+        const finalY = y + bobbingY;
+
+        // Outer Aura
         ctx.beginPath();
-        ctx.arc(x, y, renderSize / 2, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+        ctx.arc(x, finalY, radius * 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 0, 85, 0.2)';
         ctx.fill();
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 3;
+
+        // Core Body
+        ctx.beginPath();
+        ctx.arc(x, finalY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#1e1b4b';
+        ctx.fill();
+        ctx.lineWidth = 4 * distanceScale;
+        ctx.strokeStyle = '#ff0055';
         ctx.stroke();
 
-        // Draw Inner Target Core
+        // Glowing Eyes
+        const eyeOffset = 18 * distanceScale;
+        const eyeRadius = 7 * distanceScale;
         ctx.beginPath();
-        ctx.arc(x, y, renderSize / 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#ff0055';
+        ctx.arc(x - eyeOffset, finalY - (6 * distanceScale), eyeRadius, 0, Math.PI * 2);
+        ctx.arc(x + eyeOffset, finalY - (6 * distanceScale), eyeRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#00ffcc';
         ctx.fill();
+        ctx.shadowColor = '#00ffcc';
+        ctx.shadowBlur = 10;
 
-        // Render Enemy Overhead Health Bar
-        const barW = 80 * scale;
-        const barH = 8 * scale;
+        // Overhead Stats
+        const barW = 100 * distanceScale;
+        const barH = 8 * distanceScale;
         const barX = x - barW / 2;
-        const barY = y - (renderSize / 2) - 20;
+        const barY = finalY - radius - (24 * distanceScale);
 
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(barX, barY, barW, barH);
 
-        const currentHpW = (state.enemy.hp / state.enemy.maxHp) * barW;
-        ctx.fillStyle = '#22c55e';
+        const currentHpW = (state.monster.hp / state.monster.maxHp) * barW;
+        ctx.fillStyle = '#ef4444';
         ctx.fillRect(barX, barY, currentHpW, barH);
 
-        // Render Distance Badge
         ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${Math.max(12, 14 * scale)}px sans-serif`;
+        ctx.font = `bold ${Math.max(12, 15 * distanceScale)}px sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText(`HOSTILE [${Math.round(distance)}m]`, x, barY - 6);
+        ctx.fillText(`TARGET [${Math.round(dist)}m]`, x, barY - 8);
 
         ctx.restore();
     }
 
-    // Trigger Start
-    startBtn.addEventListener('click', initPermissions);
+    // Offscreen Horizontal Radar Arrow Indicator
+    function drawRadarPointer(relativeAngle) {
+        radarPointer.style.display = 'block';
+
+        const arrowAngleRad = toRad(relativeAngle - 90);
+        const radiusPx = Math.min(window.innerWidth, window.innerHeight) * 0.38;
+
+        const arrowX = Math.cos(arrowAngleRad) * radiusPx;
+        const arrowY = Math.sin(arrowAngleRad) * radiusPx;
+
+        radarPointer.style.transform = `translate(${arrowX}px, ${arrowY}px) rotate(${relativeAngle}deg)`;
+    }
+
+    // Start Button Trigger
+    startBtn.addEventListener('click', startARApp);
 </script>
 </body>
 </html>
