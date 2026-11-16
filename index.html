@@ -1,876 +1,1109 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>True AR World Shooter - Horizontal Plane Edition</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kali Linux - Cyber Security Experience</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --kali-bg: #0d1117;
+      --kali-dark: #090d12;
+      --kali-blue: #1793d1;
+      --kali-green: #00ff66;
+      --kali-red: #ff3344;
+      --kali-accent: #3399ff;
+      --term-bg: rgba(13, 17, 23, 0.95);
+      --font-code: 'Fira Code', monospace;
+      --font-ar: 'Tajawal', sans-serif;
+    }
 
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000;
-            color: #fff;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
 
-        #app-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-        }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000;
+      font-family: var(--font-code);
+      color: #fff;
+    }
 
-        /* Video Feed (Real Camera) */
-        #camera-feed {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: 1;
-        }
+    /* Fullscreen CRT Scanline Overlay */
+    .crt-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.6;
+    }
 
-        /* Overlay Canvas for World Entities Rendering */
-        #ar-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            pointer-events: none;
-        }
+    /* Screen 1: Main Intro Screen */
+    #intro-screen {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      background-color: #000;
+    }
 
-        /* HUD Layer */
-        #hud-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 16px;
-        }
+    #matrix-canvas {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0.25;
+      z-index: 1;
+    }
 
-        .hud-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 10px;
-        }
+    .intro-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+    }
 
-        .hud-card {
-            background: rgba(10, 15, 26, 0.75);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 255, 204, 0.25);
-            padding: 10px 14px;
-            border-radius: 12px;
-            min-width: 110px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
+    .cyber-btn {
+      position: relative;
+      padding: 22px 60px;
+      font-family: var(--font-ar);
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #fff;
+      background: #110000;
+      border: 3px solid var(--kali-red);
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 25px rgba(255, 51, 68, 0.6), inset 0 0 15px rgba(255, 51, 68, 0.4);
+      animation: pulseGlow 2s infinite ease-in-out;
+      transition: all 0.2s ease;
+      letter-spacing: 2px;
+    }
 
-        .hud-label {
-            font-size: 0.7rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 51, 68, 0.6), inset 0 0 10px rgba(255, 51, 68, 0.4); transform: scale(1); }
+      50% { box-shadow: 0 0 45px rgba(255, 51, 68, 0.9), inset 0 0 25px rgba(255, 51, 68, 0.7); transform: scale(1.03); }
+    }
 
-        .hud-val {
-            font-size: 1.2rem;
-            font-weight: 800;
-            color: #00ffcc;
-            margin-top: 2px;
-        }
+    .cyber-btn:hover {
+      background: var(--kali-red);
+      color: #000;
+      box-shadow: 0 0 60px rgba(255, 51, 68, 1);
+      animation: glitchHover 0.2s infinite;
+    }
 
-        .hp-bar-outer {
-            width: 140px;
-            height: 12px;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            margin-top: 4px;
-        }
+    @keyframes glitchHover {
+      0% { transform: translate(0, 0) scale(1.05); }
+      20% { transform: translate(-3px, 3px) scale(1.05); }
+      40% { transform: translate(-3px, -3px) scale(1.05); }
+      60% { transform: translate(3px, 3px) scale(1.05); }
+      80% { transform: translate(3px, -3px) scale(1.05); }
+      100% { transform: translate(0, 0) scale(1.05); }
+    }
 
-        .hp-bar-inner {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #ef4444, #22c55e);
-            transition: width 0.15s ease-out;
-        }
+    /* Glitch FX Canvas Overlay */
+    #glitch-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #000;
+      z-index: 100;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
 
-        /* Fixed Center Crosshair */
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 36px;
-            height: 36px;
-            z-index: 12;
-            pointer-events: none;
-        }
+    .loader-box {
+      width: 320px;
+      text-align: center;
+    }
 
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background: rgba(0, 255, 204, 0.9);
-            box-shadow: 0 0 8px #00ffcc;
-        }
+    .loader-text {
+      font-size: 1.1rem;
+      color: var(--kali-green);
+      margin-bottom: 12px;
+      letter-spacing: 3px;
+      text-shadow: 0 0 10px var(--kali-green);
+    }
 
-        #crosshair::before {
-            top: 17px; left: 0; width: 36px; height: 2px;
-        }
+    .progress-bar-bg {
+      width: 100%;
+      height: 12px;
+      background: #111;
+      border: 1px solid var(--kali-green);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
+    }
 
-        #crosshair::after {
-            top: 0; left: 17px; width: 2px; height: 36px;
-        }
+    .progress-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--kali-green);
+      box-shadow: 0 0 15px var(--kali-green);
+      transition: width 0.1s linear;
+    }
 
-        #crosshair-dot {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 6px; height: 6px;
-            background: #ff0055;
-            border-radius: 50%;
-            box-shadow: 0 0 6px #ff0055;
-        }
+    /* Virtual Mouse Cursor */
+    #virtual-cursor {
+      position: fixed;
+      top: 80%;
+      left: 80%;
+      width: 24px;
+      height: 24px;
+      z-index: 999;
+      pointer-events: none;
+      display: none;
+      transition: transform 0.05s linear;
+    }
 
-        #hit-marker {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%) rotate(45deg);
-            width: 28px; height: 28px;
-            opacity: 0;
-            transition: opacity 0.05s ease;
-            pointer-events: none;
-            z-index: 13;
-        }
+    /* Screen 2: Kali Linux Desktop */
+    #kali-desktop {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #0a0d14 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800"><path fill="%23131a26" d="M400,100 C200,100 100,250 100,450 C100,600 250,700 400,700 C550,700 700,600 700,450 C700,250 600,100 400,100 Z M380,200 L420,200 L450,350 L350,350 Z"/><circle cx="400" cy="400" r="280" fill="none" stroke="%2317202e" stroke-width="4"/></svg>') center/cover no-repeat;
+      display: none;
+      flex-direction: column;
+      z-index: 5;
+    }
 
-        #hit-marker::before, #hit-marker::after {
-            content: ''; position: absolute; background: #ff0055;
-        }
-        #hit-marker::before { top: 13px; left: 0; width: 28px; height: 2px; }
-        #hit-marker::after { top: 0; left: 13px; width: 2px; height: 28px; }
+    /* Top Bar Panel */
+    .top-panel {
+      height: 32px;
+      background: rgba(15, 20, 28, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 0.85rem;
+      color: #bbb;
+      z-index: 20;
+    }
 
-        /* Off-Screen Radar Pointer */
-        #radar-pointer {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            z-index: 11;
-            pointer-events: none;
-            display: none;
-        }
+    .panel-left, .panel-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
 
-        #radar-pointer-arrow {
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-left: 12px solid transparent;
-            border-right: 12px solid transparent;
-            border-bottom: 24px solid #00ffcc;
-            filter: drop-shadow(0 0 8px #00ffcc);
-            transform: translate(-50%, -50%);
-        }
+    .kali-menu-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
 
-        /* Action Buttons Controls */
-        .controls-bottom {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            pointer-events: auto;
-        }
+    .kali-logo-icon {
+      width: 18px;
+      height: 18px;
+      fill: var(--kali-blue);
+    }
 
-        .btn-group {
-            display: flex;
-            gap: 12px;
-        }
+    .sys-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+    }
 
-        .action-btn {
-            background: rgba(10, 15, 26, 0.85);
-            border: 2px solid #00ffcc;
-            color: #00ffcc;
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: 800;
-            font-size: 0.85rem;
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
-            touch-action: manipulation;
-        }
+    .stat-bar {
+      width: 40px;
+      height: 6px;
+      background: #222;
+      border-radius: 3px;
+      overflow: hidden;
+    }
 
-        .action-btn:active {
-            background: #00ffcc;
-            color: #000;
-        }
+    .stat-fill {
+      height: 100%;
+      background: var(--kali-blue);
+      width: 45%;
+    }
 
-        #shoot-btn {
-            width: 88px;
-            height: 88px;
-            border-color: #ff0055;
-            color: #ff0055;
-            box-shadow: 0 0 20px rgba(255, 0, 85, 0.4);
-        }
+    /* Desktop Grid & Icons */
+    .desktop-area {
+      flex: 1;
+      position: relative;
+      padding: 20px;
+    }
 
-        #shoot-btn:active {
-            background: #ff0055;
-            color: #fff;
-        }
+    .desktop-icon {
+      width: 85px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      position: absolute;
+      transition: background 0.2s;
+    }
 
-        /* Banner Messages */
-        #status-banner {
-            position: absolute;
-            top: 25%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.8rem;
-            font-weight: 900;
-            color: #ff0055;
-            text-shadow: 0 0 12px rgba(255, 0, 85, 0.8);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            z-index: 20;
-            text-align: center;
-            white-space: nowrap;
-        }
+    #kali-term-icon {
+      top: 30px;
+      left: 30px;
+    }
 
-        /* Permissions Screen */
-        #permission-screen {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(5, 8, 15, 0.96);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 24px;
-            text-align: center;
-        }
+    #msm-app-icon {
+      top: 130px;
+      left: 30px;
+    }
 
-        .card {
-            background: #0f172a;
-            border: 1px solid #1e293b;
-            box-shadow: 0 10px 30px rgba(0,255,204, 0.15);
-            border-radius: 20px;
-            padding: 30px 24px;
-            max-width: 480px;
-            width: 100%;
-        }
+    .desktop-icon:hover, .desktop-icon.active {
+      background: rgba(23, 147, 209, 0.25);
+      border: 1px solid rgba(23, 147, 209, 0.5);
+    }
 
-        .btn-start {
-            background: linear-gradient(135deg, #00ffcc 0%, #0099ff 100%);
-            border: none;
-            color: #000;
-            font-weight: 800;
-            padding: 16px 32px;
-            font-size: 1.15rem;
-            border-radius: 12px;
-            cursor: pointer;
-            margin-top: 24px;
-            transition: all 0.2s ease;
-            width: 100%;
-        }
+    #msm-app-icon:hover, #msm-app-icon.active {
+      background: rgba(255, 51, 68, 0.25);
+      border: 1px solid rgba(255, 51, 68, 0.5);
+    }
 
-        .btn-start:active {
-            transform: scale(0.97);
-        }
+    .icon-img {
+      width: 48px;
+      height: 48px;
+      background: #111a24;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid #223344;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
 
-        .sensor-error-msg {
-            color: #ff4757;
-            font-weight: bold;
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin-top: 15px;
-            display: none;
-        }
-    </style>
+    .msm-icon-bg {
+      background: #200005;
+      border: 1px solid var(--kali-red);
+      color: var(--kali-red);
+      font-weight: 900;
+      font-family: var(--font-ar);
+    }
+
+    .icon-label {
+      font-size: 0.75rem;
+      color: #eee;
+      text-align: center;
+      text-shadow: 0 1px 3px #000;
+    }
+
+    /* Generic Window Styles */
+    .window {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: 80%;
+      max-width: 900px;
+      height: 520px;
+      background: var(--term-bg);
+      border: 1px solid rgba(0, 255, 102, 0.3);
+      border-radius: 8px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(0, 255, 102, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease, width 0.4s ease;
+      z-index: 30;
+    }
+
+    .window.active {
+      opacity: 1;
+      pointer-events: all;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .window-header {
+      height: 34px;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 12px;
+    }
+
+    .window-title {
+      font-size: 0.8rem;
+      color: #8b949e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .win-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .win-close { background: #ff5f56; }
+    .win-min { background: #ffbd2e; }
+    .win-max { background: #27c93f; }
+
+    /* Terminal Body */
+    .terminal-body {
+      flex: 1;
+      padding: 16px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #00ff66;
+      overflow-y: auto;
+      direction: ltr;
+      text-align: left;
+      font-family: var(--font-code);
+    }
+
+    .prompt-line {
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+
+    .user-part { color: #ff3344; font-weight: bold; }
+    .path-part { color: #3399ff; font-weight: bold; }
+    .output-text { color: #e6edf3; margin-bottom: 8px; white-space: pre-wrap; }
+    .success-text { color: #00ff66; text-shadow: 0 0 5px rgba(0, 255, 102, 0.5); }
+
+    /* Morse Output Box */
+    .morse-card {
+      margin-top: 15px;
+      background: rgba(0, 255, 102, 0.05);
+      border: 1px solid var(--kali-green);
+      border-radius: 6px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.1);
+    }
+
+    .morse-title {
+      font-size: 0.75rem;
+      color: var(--kali-green);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .morse-content {
+      font-size: 1.25rem;
+      color: #fff;
+      letter-spacing: 4px;
+      word-break: break-all;
+      text-shadow: 0 0 8px var(--kali-green);
+      font-weight: bold;
+    }
+
+    .copy-btn {
+      align-self: flex-start;
+      padding: 8px 18px;
+      background: var(--kali-green);
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      font-family: var(--font-code);
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: #fff;
+      box-shadow: 0 0 12px #fff;
+    }
+
+    /* MS.M App Window Styling */
+    #msm-window {
+      border: 1px solid var(--kali-red);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.9), 0 0 25px rgba(255, 51, 68, 0.25);
+      max-width: 650px;
+      height: 560px;
+    }
+
+    .msm-body {
+      flex: 1;
+      background: #0a0203;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      font-family: var(--font-ar);
+      direction: rtl;
+      overflow-y: auto;
+    }
+
+    .msm-header-title {
+      color: var(--kali-red);
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-shadow: 0 0 12px rgba(255, 51, 68, 0.7);
+      text-align: center;
+    }
+
+    .msm-sub {
+      color: #aaa;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .msm-input-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .msm-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: #150507;
+      border: 2px solid var(--kali-red);
+      border-radius: 6px;
+      color: #fff;
+      font-family: var(--font-code);
+      font-size: 1.2rem;
+      text-align: center;
+      letter-spacing: 4px;
+      outline: none;
+      box-shadow: inset 0 0 8px rgba(255, 51, 68, 0.3);
+    }
+
+    .msm-input:focus {
+      box-shadow: 0 0 15px rgba(255, 51, 68, 0.6), inset 0 0 8px rgba(255, 51, 68, 0.5);
+    }
+
+    .msm-submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--kali-red);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(255, 51, 68, 0.4);
+      transition: all 0.2s;
+    }
+
+    .msm-submit-btn:hover {
+      background: #ff5566;
+      box-shadow: 0 0 25px rgba(255, 51, 68, 0.8);
+    }
+
+    .msm-msg {
+      font-size: 0.95rem;
+      font-weight: bold;
+      min-height: 24px;
+      letter-spacing: 1px;
+    }
+
+    .msm-msg.denied { color: var(--kali-red); text-shadow: 0 0 8px var(--kali-red); }
+    .msm-msg.granted { color: var(--kali-green); text-shadow: 0 0 8px var(--kali-green); }
+
+    /* Mission Accomplished Card View */
+    .mission-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .mission-title {
+      font-size: 1.3rem;
+      color: var(--kali-green);
+      font-weight: 900;
+      text-shadow: 0 0 10px var(--kali-green);
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .mission-img-container {
+      width: 100%;
+      max-width: 380px;
+      border: 2px solid var(--kali-green);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 255, 102, 0.3);
+    }
+
+    .mission-img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .whatsapp-btn {
+      padding: 14px 28px;
+      background: #25D366;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-family: var(--font-ar);
+      font-weight: 900;
+      font-size: 1.05rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 0 20px rgba(37, 211, 102, 0.5);
+      transition: all 0.2s;
+      text-decoration: none;
+      letter-spacing: 1px;
+    }
+
+    .whatsapp-btn:hover {
+      background: #20bd5a;
+      box-shadow: 0 0 30px rgba(37, 211, 102, 0.9);
+      transform: scale(1.02);
+    }
+
+    /* Toast Notification */
+    #toast-msg {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--kali-green);
+      color: #000;
+      padding: 10px 24px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      box-shadow: 0 0 20px var(--kali-green);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 10000;
+    }
+
+    #toast-msg.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 8px;
+      height: 15px;
+      background: var(--kali-green);
+      vertical-align: middle;
+      animation: blink 0.8s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @media (max-width: 768px) {
+      .window {
+        width: 95%;
+        height: 80vh;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<div id="app-container">
-    <!-- Camera Feed Background -->
-    <video id="camera-feed" autoplay playsinline muted></video>
+  <div class="crt-overlay"></div>
+  <div id="toast-msg">COPIED SUCCESSFULLY!</div>
 
-    <!-- Canvas for Horizontal Entity Projection -->
-    <canvas id="ar-canvas"></canvas>
+  <!-- Screen 1: Intro Button -->
+  <div id="intro-screen">
+    <canvas id="matrix-canvas"></canvas>
+    <div class="intro-content">
+      <button class="cyber-btn" id="dont-click-btn">لا تضغط</button>
+    </div>
+  </div>
 
-    <!-- Fixed Crosshair & Pointer -->
-    <div id="crosshair"><div id="crosshair-dot"></div></div>
-    <div id="hit-marker"></div>
-    <div id="radar-pointer"><div id="radar-pointer-arrow"></div></div>
+  <!-- Glitch & Loading Screen -->
+  <div id="glitch-overlay">
+    <div class="loader-box">
+      <div class="loader-text" id="loader-status">INITIALIZING SYSTEM</div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+    </div>
+  </div>
 
-    <!-- Banner Notification -->
-    <div id="status-banner">TARGET DEFEATED</div>
+  <!-- Virtual SVG Mouse Cursor -->
+  <svg id="virtual-cursor" viewBox="0 0 24 24">
+    <path fill="#ffffff" stroke="#000000" stroke-width="1.5" d="M4.5,2.5 L19.5,12.5 L12,14 L8.5,21.5 L4.5,2.5 Z"/>
+  </svg>
 
-    <!-- HUD Overlay -->
-    <div id="hud-layer">
-        <div class="hud-row">
-            <div class="hud-card">
-                <div class="hud-label">Player Health</div>
-                <div class="hp-bar-outer">
-                    <div id="hp-bar" class="hp-bar-inner"></div>
-                </div>
-            </div>
-
-            <div class="hud-card" style="text-align: center;">
-                <div class="hud-label">Monster Dist</div>
-                <div id="monster-dist" class="hud-val">-- m</div>
-            </div>
-
-            <div class="hud-card" style="text-align: left;">
-                <div class="hud-label">Score / Kills</div>
-                <div id="kill-count" class="hud-val">0</div>
-            </div>
+  <!-- Screen 2: Kali Linux Desktop -->
+  <div id="kali-desktop">
+    <!-- Top Bar -->
+    <div class="top-panel">
+      <div class="panel-left">
+        <div class="kali-menu-btn">
+          <svg class="kali-logo-icon" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+          </svg>
+          Applications
         </div>
-
-        <div class="hud-row">
-            <div class="hud-card" style="background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1);">
-                <div class="hud-label">Phone Heading</div>
-                <div id="debug-heading" class="hud-val" style="font-size:0.9rem; color:#cbd5e1;">0°</div>
-            </div>
-            <div class="hud-card" style="background: rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1); text-align:left;">
-                <div class="hud-label">Monster Bearing</div>
-                <div id="debug-bearing" class="hud-val" style="font-size:0.9rem; color:#cbd5e1;">0°</div>
-            </div>
+        <span>System</span>
+      </div>
+      <div class="panel-right">
+        <div class="sys-stat">
+          <span>CPU</span>
+          <div class="stat-bar"><div class="stat-fill" style="width: 28%;"></div></div>
         </div>
-
-        <div class="controls-bottom">
-            <div class="hud-card">
-                <div class="hud-label">Ammo</div>
-                <div id="ammo-val" class="hud-val">10 / ∞</div>
-            </div>
-
-            <div class="btn-group">
-                <button id="reload-btn" class="action-btn">RELOAD</button>
-                <button id="shoot-btn" class="action-btn">FIRE</button>
-            </div>
+        <div class="sys-stat">
+          <span>RAM</span>
+          <div class="stat-bar"><div class="stat-fill" style="width: 62%;"></div></div>
         </div>
+        <span id="clock-display">13:37</span>
+      </div>
     </div>
 
-    <!-- Startup Permission Screen -->
-    <div id="permission-screen">
-        <div class="card">
-            <h2 style="color: #00ffcc; margin-bottom: 12px; font-size: 1.6rem;">True AR World Shooter</h2>
-            <p style="color: #cbd5e1; line-height: 1.6; font-size: 0.95rem;">
-                العدو يتواجد دائماً على <strong>المستوى الأفقي المباشر للاعب</strong> (لا يوجد عدو في الهواء أو أسفل الأرض).
-                <br><br>
-                دور هاتفك أفقياً (يمين وشمال) للبحث عنه ومحاذاته مع Crosshair الشاشة!
-            </p>
-            <button id="start-btn" class="btn-start">تفعيل المستشعرات والكاميرا والبدء</button>
-            <div id="sensor-error" class="sensor-error-msg">
-                هذا الجهاز لا يدعم مستشعر اتجاه الهاتف المطلوب لهذه اللعبة.
-            </div>
+    <!-- Desktop Icons -->
+    <div class="desktop-area">
+      <!-- Terminal Icon -->
+      <div class="desktop-icon" id="kali-term-icon">
+        <div class="icon-img">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#00ff66" stroke-width="2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
         </div>
+        <div class="icon-label">Terminal</div>
+      </div>
+
+      <!-- MS.M App Icon -->
+      <div class="desktop-icon" id="msm-app-icon">
+        <div class="icon-img msm-icon-bg">
+          MS.M
+        </div>
+        <div class="icon-label">MS.M</div>
+      </div>
+
+      <!-- Kali Terminal Window -->
+      <div class="window" id="term-window">
+        <div class="window-header">
+          <div class="window-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff66" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+            root@kali:~
+          </div>
+          <div class="window-controls">
+            <span class="win-btn win-min"></span>
+            <span class="win-btn win-max"></span>
+            <span class="win-btn win-close" id="term-close-btn"></span>
+          </div>
+        </div>
+        <div class="terminal-body" id="term-body"></div>
+      </div>
+
+      <!-- MS.M App Window -->
+      <div class="window" id="msm-window">
+        <div class="window-header" style="border-bottom-color: rgba(255, 51, 68, 0.3);">
+          <div class="window-title" style="color: var(--kali-red);">
+            MS.M — RESTRICTED ACCESS
+          </div>
+          <div class="window-controls">
+            <span class="win-btn win-close" id="msm-close-btn"></span>
+          </div>
+        </div>
+        <div class="msm-body">
+          <!-- Auth Form View -->
+          <div id="msm-auth-view" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+            <div class="msm-header-title">MS.M — RESTRICTED ACCESS</div>
+            <div class="msm-sub">يرجى إدخال رمز الوصول لإكمال المهمة</div>
+            <div class="msm-input-box">
+              <input type="password" id="msm-pass-code" class="msm-input" placeholder="*****" maxlength="5">
+              <button class="msm-submit-btn" id="msm-login-btn">تأكيد الدخول</button>
+            </div>
+            <div class="msm-msg" id="msm-status-msg"></div>
+          </div>
+
+          <!-- Mission Accomplished View -->
+          <div class="mission-view" id="msm-mission-view">
+            <div class="mission-title">MISSION COMPLETED SUCCESSFULLY ✅</div>
+            <div class="mission-img-container">
+              <img id="card-mission-img" src="https://i.postimg.cc/B6f8RJJ6/Carte-de-mission-cyberpunk-accomplie.png" alt="Carte de mission" class="mission-img">
+            </div>
+            <button id="send-report-btn" class="whatsapp-btn">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.205 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+              </svg>
+              SEND MISSION REPORT
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<script>
-    /* =========================================================================
-     * 1. Core Configuration & Engine State
-     * ========================================================================= */
-    const CONFIG = {
-        fovHorizontal: 60,   // Camera Field of View in Degrees
-        smoothFactor: 0.15   // Smooth interpolation for orientation
-    };
-
-    const state = {
-        player: {
-            lat: null,
-            lon: null,
-            heading: 0,          // Phone Heading Angle (0..360)
-            smoothedHeading: 0,  // Smooth Heading for Engine
-            hp: 100,
-            maxHp: 100,
-            ammo: 10,
-            maxAmmo: 10,
-            kills: 0,
-            isReloading: false
-        },
-        monster: {
-            lat: null,
-            lon: null,
-            distance: 0,        // Horizontal Distance in Meters
-            bearing: 0,         // Absolute Bearing (0..360)
-            relativeAngle: 0,   // Horizontal relative angle to camera
-            hp: 100,
-            maxHp: 100,
-            alive: false,
-            screenX: -999,      // Screen Projection X
-            screenY: -999,      // Fixed Horizontal Center Line Y
-            screenRadius: 0,    // Hit Collision Radius
-            walkPhase: 0
-        },
-        hasOrientationSensor: false,
-        audioCtx: null
-    };
-
-    // DOM Elements
-    const video = document.getElementById('camera-feed');
-    const canvas = document.getElementById('ar-canvas');
-    const ctx = canvas.getContext('2d');
-    const permScreen = document.getElementById('permission-screen');
-    const startBtn = document.getElementById('start-btn');
-    const sensorErrorMsg = document.getElementById('sensor-error');
-    const hpBar = document.getElementById('hp-bar');
-    const monsterDistText = document.getElementById('monster-dist');
-    const killCountText = document.getElementById('kill-count');
-    const ammoValText = document.getElementById('ammo-val');
-    const debugHeading = document.getElementById('debug-heading');
-    const debugBearing = document.getElementById('debug-bearing');
-    const shootBtn = document.getElementById('shoot-btn');
-    const reloadBtn = document.getElementById('reload-btn');
-    const hitMarker = document.getElementById('hit-marker');
-    const statusBanner = document.getElementById('status-banner');
-    const radarPointer = document.getElementById('radar-pointer');
-
-    /* =========================================================================
-     * 2. Audio Engine (Web Audio API)
-     * ========================================================================= */
-    function initAudio() {
-        if (!state.audioCtx) {
-            state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  <script>
+    /* Audio Effects Generator */
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         }
-    }
-
-    function playSound(type) {
-        if (!state.audioCtx) return;
-        const audioCtx = state.audioCtx;
-        const now = audioCtx.currentTime;
-
-        if (type === 'shoot') {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(800, now);
-            osc.frequency.exponentialRampToValueAtTime(50, now + 0.18);
-            gain.gain.setValueAtTime(0.35, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.18);
-        } else if (type === 'hit') {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(180, now);
-            osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.12);
-        } else if (type === 'reload') {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(300, now);
-            osc.frequency.linearRampToValueAtTime(700, now + 0.25);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.25);
-        }
-    }
-
-    /* =========================================================================
-     * 3. Math & 2D Horizontal Coordinate Calculations
-     * ========================================================================= */
-    const toRad = (deg) => deg * Math.PI / 180;
-    const toDeg = (rad) => rad * 180 / Math.PI;
-
-    // 2D Horizontal Distance
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371000;
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-
-    // Horizontal Absolute Bearing (0..360)
-    function calculateBearing(lat1, lon1, lat2, lon2) {
-        const y = Math.sin(toRad(lon2 - lon1)) * Math.cos(toRad(lat2));
-        const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-                  Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
-        const brng = Math.atan2(y, x);
-        return (toDeg(brng) + 360) % 360;
-    }
-
-    // Angle Normalization (-180..+180)
-    function normalizeAngle(deg) {
-        deg = deg % 360;
-        if (deg > 180) deg -= 360;
-        if (deg < -180) deg += 360;
-        return deg;
-    }
-
-    // Spawn Monster strictly on the Horizontal Map Plane
-    function spawnMonsterInWorld() {
-        if (!state.player.lat || !state.player.lon) return;
-
-        const distMeters = 8 + Math.random() * 14;
-        const angleRad = Math.random() * 2 * Math.PI;
-
-        const deltaLat = (distMeters * Math.cos(angleRad)) / 111320;
-        const deltaLon = (distMeters * Math.sin(angleRad)) / (111320 * Math.cos(toRad(state.player.lat)));
-
-        state.monster.lat = state.player.lat + deltaLat;
-        state.monster.lon = state.player.lon + deltaLon;
-        state.monster.hp = state.monster.maxHp;
-        state.monster.alive = true;
-
-        showBanner("NEW MONSTER SPOTTED ON YOUR HORIZON!");
-    }
-
-    /* =========================================================================
-     * 4. Device Sensors Initialization
-     * ========================================================================= */
-    async function setupDeviceOrientation() {
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            try {
-                const permissionState = await DeviceOrientationEvent.requestPermission();
-                if (permissionState === 'granted') {
-                    window.addEventListener('deviceorientation', handleOrientation, true);
-                    return true;
-                } else {
-                    return false;
-                }
-            } catch (e) {
-                return false;
-            }
-        } else if (window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', handleOrientation, true);
-            return true;
-        }
-        return false;
-    }
-
-    function handleOrientation(e) {
-        let heading = null;
-
-        if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
-            heading = e.webkitCompassHeading; // iOS Safari
-        } else if (e.alpha !== null) {
-            heading = (360 - e.alpha) % 360;  // Android Standard
-        }
-
-        if (heading !== null && !isNaN(heading)) {
-            state.player.heading = heading;
-            state.hasOrientationSensor = true;
-        }
-    }
-
-    /* =========================================================================
-     * 5. App Setup
-     * ========================================================================= */
-    async function startARApp() {
-        initAudio();
-
-        const orientationSupported = await setupDeviceOrientation();
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        if (!orientationSupported && !state.hasOrientationSensor) {
-            showSensorError();
-            return;
-        }
-
+      }
+      playBeep(freq = 800, type = 'sine', duration = 0.05) {
+        if (!this.ctx) return;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-                audio: false
-            });
-            video.srcObject = stream;
-
-            if ('geolocation' in navigator) {
-                navigator.geolocation.watchPosition(
-                    (pos) => {
-                        state.player.lat = pos.coords.latitude;
-                        state.player.lon = pos.coords.longitude;
-
-                        if (!state.monster.lat) {
-                            spawnMonsterInWorld();
-                        }
-                    },
-                    (err) => { console.warn("GPS Warning:", err.message); },
-                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 8000 }
-                );
-            } else {
-                alert("جهازك لا يدعم صلاحية تحديد الموقع الجغرافي.");
-            }
-
-            permScreen.style.display = 'none';
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-
-            requestAnimationFrame(renderEngine);
-
-        } catch (err) {
-            alert("تعذر الوصول للكاميرا: " + err.message);
-        }
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e){}
+      }
+      playGlitch() {
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(600, this.ctx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.15);
+        } catch(e){}
+      }
     }
 
-    function showSensorError() {
-        startBtn.style.display = 'none';
-        sensorErrorMsg.style.display = 'block';
-    }
+    const sfx = new SoundFX();
 
+    /* Matrix Background Animation */
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
     function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const chars = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ$%#@!*&';
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops = Array(columns).fill(1);
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#00ff66';
+      ctx.font = fontSize + 'px monospace';
+      for (let i = 0; i < drops.length; i++) {
+        const text = chars.charAt(Math.floor(Math.random() * chars.length));
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+    setInterval(drawMatrix, 33);
+
+    /* Clock update */
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('clock-display').textContent = `${h}:${m}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* DOM Elements */
+    const dontClickBtn = document.getElementById('dont-click-btn');
+    const introScreen = document.getElementById('intro-screen');
+    const glitchOverlay = document.getElementById('glitch-overlay');
+    const progressFill = document.getElementById('progress-fill');
+    const virtualCursor = document.getElementById('virtual-cursor');
+    const kaliDesktop = document.getElementById('kali-desktop');
+    const kaliTermIcon = document.getElementById('kali-term-icon');
+    const msmAppIcon = document.getElementById('msm-app-icon');
+    const termWindow = document.getElementById('term-window');
+    const msmWindow = document.getElementById('msm-window');
+    const termBody = document.getElementById('term-body');
+    const toastMsg = document.getElementById('toast-msg');
+
+    const msmPassCode = document.getElementById('msm-pass-code');
+    const msmLoginBtn = document.getElementById('msm-login-btn');
+    const msmStatusMsg = document.getElementById('msm-status-msg');
+    const msmAuthView = document.getElementById('msm-auth-view');
+    const msmMissionView = document.getElementById('msm-mission-view');
+    const sendReportBtn = document.getElementById('send-report-btn');
+
+    /* Window Controls */
+    document.getElementById('term-close-btn').addEventListener('click', () => {
+      termWindow.classList.remove('active');
+    });
+    document.getElementById('msm-close-btn').addEventListener('click', () => {
+      msmWindow.classList.remove('active');
+    });
+
+    kaliTermIcon.addEventListener('dblclick', () => {
+      termWindow.classList.add('active');
+    });
+
+    msmAppIcon.addEventListener('click', () => {
+      msmWindow.classList.add('active');
+      msmPassCode.focus();
+    });
+
+    /* Hover Sound & FX on "Do Not Click" */
+    dontClickBtn.addEventListener('mouseenter', () => {
+      sfx.init();
+      sfx.playGlitch();
+    });
+
+    /* Sequence Start */
+    dontClickBtn.addEventListener('click', () => {
+      sfx.init();
+      sfx.playBeep(440, 'square', 0.2);
+
+      introScreen.style.display = 'none';
+      glitchOverlay.style.display = 'flex';
+
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.floor(Math.random() * 12) + 5;
+        if (progress > 100) progress = 100;
+        progressFill.style.width = progress + '%';
+        sfx.playBeep(200 + progress * 5, 'sawtooth', 0.02);
+
+        if (progress === 100) {
+          clearInterval(interval);
+          setTimeout(startVirtualMouseSequence, 400);
+        }
+      }, 80);
+    });
+
+    /* Virtual Mouse Animation Sequence */
+    function startVirtualMouseSequence() {
+      glitchOverlay.style.display = 'none';
+      kaliDesktop.style.display = 'flex';
+      virtualCursor.style.display = 'block';
+
+      const iconRect = kaliTermIcon.getBoundingClientRect();
+      const targetX = iconRect.left + iconRect.width / 2;
+      const targetY = iconRect.top + iconRect.height / 2;
+
+      let startX = window.innerWidth * 0.8;
+      let startY = window.innerHeight * 0.8;
+
+      virtualCursor.style.left = startX + 'px';
+      virtualCursor.style.top = startY + 'px';
+
+      let startTime = null;
+      const duration = 1200;
+
+      function animateMouse(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeProgress = 0.5 - Math.cos(progress * Math.PI) / 2;
+
+        const currentX = startX + (targetX - startX) * easeProgress;
+        const currentY = startY + (targetY - startY) * easeProgress;
+
+        virtualCursor.style.left = currentX + 'px';
+        virtualCursor.style.top = currentY + 'px';
+
+        if (progress < 1) {
+          requestAnimationFrame(animateMouse);
+        } else {
+          kaliTermIcon.classList.add('active');
+          sfx.playBeep(1000, 'sine', 0.05);
+          setTimeout(() => {
+            sfx.playBeep(1200, 'sine', 0.05);
+            virtualCursor.style.display = 'none';
+            termWindow.classList.add('active');
+            setTimeout(runTerminalScript, 500);
+          }, 150);
+        }
+      }
+
+      requestAnimationFrame(animateMouse);
     }
 
-    /* =========================================================================
-     * 6. Actions & Weapon Controls
-     * ========================================================================= */
-    shootBtn.addEventListener('click', handleShootAction);
-    reloadBtn.addEventListener('click', handleReloadAction);
+    /* Terminal Output Sequence */
+    const terminalScript = [
+      { type: 'cmd', text: 'clear' },
+      { type: 'clear' },
+      { type: 'cmd', text: 'echo "INITIALIZING SYSTEM..."' },
+      { type: 'output', text: '[+] Establishing secure connection...\n[+] Loading encryption modules...\n[+] Scanning virtual environment...\n[+] Access granted.' },
+      { type: 'cmd', text: 'morse --encode "WELCOME TO THE DARK SIDE"' },
+      { type: 'morse', text: '.-- . .-.. -.-. --- -- . / - --- / - .... . / -.. .- .-. -.- / ... .. -.. .' }
+    ];
 
-    function handleShootAction() {
-        if (state.player.isReloading) return;
-        if (state.player.ammo <= 0) {
-            handleReloadAction();
-            return;
-        }
-
-        state.player.ammo--;
-        updateHUD();
-        playSound('shoot');
-
-        // Check if Monster is aligned horizontally with Crosshair
-        if (state.monster.alive && state.monster.screenX !== -999) {
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-
-            const dx = state.monster.screenX - centerX;
-            const dy = state.monster.screenY - centerY;
-            const distToCrosshair = Math.sqrt(dx * dx + dy * dy);
-
-            if (distToCrosshair <= state.monster.screenRadius) {
-                applyDamageToMonster();
-            }
-        }
+    function createPromptLine() {
+      const line = document.createElement('div');
+      line.className = 'prompt-line';
+      line.innerHTML = `<span class="user-part">┌──(root</span><span class="user-part">㉿kali</span><span class="user-part">)-[</span><span class="path-part">~</span><span class="user-part">]</span><br><span class="user-part">└─# </span><span class="cmd-text"></span><span class="cursor-blink"></span>`;
+      termBody.appendChild(line);
+      termBody.scrollTop = termBody.scrollHeight;
+      return line;
     }
 
-    function applyDamageToMonster() {
-        const dmg = 30 + Math.floor(Math.random() * 20);
-        state.monster.hp -= dmg;
-        playSound('hit');
-
-        hitMarker.style.opacity = '1';
-        setTimeout(() => { hitMarker.style.opacity = '0'; }, 100);
-
-        if (state.monster.hp <= 0) {
-            state.monster.alive = false;
-            state.player.kills++;
-            updateHUD();
-
-            showBanner("MONSTER ELIMINATED!");
-
-            setTimeout(() => {
-                spawnMonsterInWorld();
-            }, 3000);
+    async function runTerminalScript() {
+      for (const step of terminalScript) {
+        if (step.type === 'clear') {
+          termBody.innerHTML = '';
+          await sleep(200);
+          continue;
         }
+
+        if (step.type === 'cmd') {
+          const line = createPromptLine();
+          const cmdTextSpan = line.querySelector('.cmd-text');
+          const cursor = line.querySelector('.cursor-blink');
+
+          for (let i = 0; i < step.text.length; i++) {
+            cmdTextSpan.textContent += step.text[i];
+            sfx.playBeep(600 + Math.random() * 200, 'square', 0.015);
+            await sleep(40 + Math.random() * 30);
+          }
+          cursor.remove();
+          await sleep(300);
+        } else if (step.type === 'output') {
+          const outDiv = document.createElement('div');
+          outDiv.className = 'output-text success-text';
+          outDiv.textContent = step.text;
+          termBody.appendChild(outDiv);
+          termBody.scrollTop = termBody.scrollHeight;
+          await sleep(400);
+        } else if (step.type === 'morse') {
+          const morseCard = document.createElement('div');
+          morseCard.className = 'morse-card';
+          morseCard.innerHTML = `
+            <div class="morse-title">ENCRYPTED MORSE CODE OUTPUT</div>
+            <div class="morse-content" id="morse-text">${step.text}</div>
+            <button class="copy-btn" id="copy-morse-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              COPY MORSE
+            </button>
+          `;
+          termBody.appendChild(morseCard);
+          termBody.scrollTop = termBody.scrollHeight;
+
+          document.getElementById('copy-morse-btn').addEventListener('click', () => {
+            navigator.clipboard.writeText(step.text).then(() => {
+              showToast();
+              sfx.playBeep(1200, 'sine', 0.1);
+            });
+          });
+        }
+      }
     }
 
-    function handleReloadAction() {
-        if (state.player.isReloading || state.player.ammo === state.player.maxAmmo) return;
-
-        state.player.isReloading = true;
-        playSound('reload');
-        ammoValText.innerText = "RELOADING...";
+    /* MS.M Application Logic */
+    function handleMsmAuth() {
+      const code = msmPassCode.value.trim();
+      if (code === '18895') {
+        sfx.playBeep(1000, 'sine', 0.1);
+        msmStatusMsg.className = 'msm-msg granted';
+        msmStatusMsg.textContent = 'ACCESS GRANTED';
 
         setTimeout(() => {
-            state.player.ammo = state.player.maxAmmo;
-            state.player.isReloading = false;
-            updateHUD();
-        }, 1200);
+          msmAuthView.style.display = 'none';
+          msmMissionView.style.display = 'flex';
+        }, 800);
+      } else {
+        sfx.playGlitch();
+        msmStatusMsg.className = 'msm-msg denied';
+        msmStatusMsg.textContent = 'ACCESS DENIED';
+        msmPassCode.value = '';
+        msmPassCode.focus();
+      }
     }
 
-    function showBanner(text) {
-        statusBanner.innerText = text;
-        statusBanner.style.opacity = '1';
-        setTimeout(() => { statusBanner.style.opacity = '0'; }, 2200);
-    }
+    msmLoginBtn.addEventListener('click', handleMsmAuth);
+    msmPassCode.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleMsmAuth();
+    });
 
-    function updateHUD() {
-        hpBar.style.width = `${(state.player.hp / state.player.maxHp) * 100}%`;
-        killCountText.innerText = state.player.kills;
-        if (!state.player.isReloading) {
-            ammoValText.innerText = `${state.player.ammo} / ∞`;
+    /* WhatsApp Sending Logic */
+    sendReportBtn.addEventListener('click', async () => {
+      sfx.playBeep(1000, 'sine', 0.1);
+      const phone = "212675459901";
+      const message = "تم إنجاز المهمة بنجاح! ✅\nتم إكمال جميع مراحل المهمة بنجاح. 🎯";
+      const waUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+
+      // Attempt native Web Share API with image file if supported
+      try {
+        const imgElement = document.getElementById('card-mission-img');
+        const response = await fetch(imgElement.src);
+        const blob = await response.blob();
+        const file = new File([blob], 'Carte_de_mission_cyberpunk.png', { type: blob.type });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'MISSION COMPLETED',
+            text: message,
+            files: [file]
+          });
+          return;
         }
+      } catch (err) {
+        console.log("Web Share fallback triggered", err);
+      }
+
+      // Fallback: Direct redirect to WhatsApp chat with pre-filled message
+      window.open(waUrl, '_blank');
+    });
+
+    function showToast() {
+      toastMsg.classList.add('show');
+      setTimeout(() => {
+        toastMsg.classList.remove('show');
+      }, 2500);
     }
 
-    /* =========================================================================
-     * 7. Strictly Horizontal AR Rendering Loop
-     * ========================================================================= */
-    function renderEngine() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Smooth Phone Heading Interpolation
-        let diff = normalizeAngle(state.player.heading - state.player.smoothedHeading);
-        state.player.smoothedHeading = (state.player.smoothedHeading + diff * CONFIG.smoothFactor + 360) % 360;
-
-        debugHeading.innerText = `${Math.round(state.player.smoothedHeading)}°`;
-
-        if (state.player.lat && state.monster.lat) {
-            // 1. Calculate 2D Horizontal Distance & Bearing
-            state.monster.distance = calculateDistance(
-                state.player.lat, state.player.lon,
-                state.monster.lat, state.monster.lon
-            );
-
-            state.monster.bearing = calculateBearing(
-                state.player.lat, state.player.lon,
-                state.monster.lat, state.monster.lon
-            );
-
-            debugBearing.innerText = `${Math.round(state.monster.bearing)}°`;
-            monsterDistText.innerText = `${Math.round(state.monster.distance)} m`;
-
-            // 2. Relative Horizontal Angle (Enemy Bearing - Real Phone Heading)
-            const relAngle = normalizeAngle(state.monster.bearing - state.player.smoothedHeading);
-            state.monster.relativeAngle = relAngle;
-
-            const halfFOV = CONFIG.fovHorizontal / 2;
-
-            if (state.monster.alive && relAngle >= -halfFOV && relAngle <= halfFOV) {
-                // INSIDE HORIZONTAL CAMERA FOV
-                const screenCenterX = canvas.width / 2;
-
-                // X position moves smoothly left or right depending on phone rotation
-                const xOffset = (relAngle / halfFOV) * (canvas.width / 2);
-                state.monster.screenX = screenCenterX + xOffset;
-
-                // STRICTLY HORIZONTAL: Y is locked 100% to the horizontal center line
-                state.monster.screenY = canvas.height / 2;
-
-                drawMonsterEntity(state.monster.screenX, state.monster.screenY, state.monster.distance);
-                radarPointer.style.display = 'none';
-
-            } else {
-                // OUTSIDE HORIZONTAL FOV OR BEHIND PLAYER
-                state.monster.screenX = -999;
-                state.monster.screenY = -999;
-
-                if (state.monster.alive) {
-                    drawRadarPointer(relAngle);
-                } else {
-                    radarPointer.style.display = 'none';
-                }
-            }
-        }
-
-        requestAnimationFrame(renderEngine);
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    // Draw Monster Entity on the Horizontal Plane
-    function drawMonsterEntity(x, y, dist) {
-        ctx.save();
-
-        // Scale monster size based purely on horizontal distance
-        const distanceScale = Math.max(0.35, Math.min(1.6, 18 / Math.max(4, dist)));
-        const radius = 60 * distanceScale;
-        state.monster.screenRadius = radius;
-
-        state.monster.walkPhase += 0.08;
-        const bobbingY = Math.sin(state.monster.walkPhase) * (8 * distanceScale);
-        const finalY = y + bobbingY;
-
-        // Outer Aura
-        ctx.beginPath();
-        ctx.arc(x, finalY, radius * 1.2, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 0, 85, 0.2)';
-        ctx.fill();
-
-        // Core Body
-        ctx.beginPath();
-        ctx.arc(x, finalY, radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#1e1b4b';
-        ctx.fill();
-        ctx.lineWidth = 4 * distanceScale;
-        ctx.strokeStyle = '#ff0055';
-        ctx.stroke();
-
-        // Glowing Eyes
-        const eyeOffset = 18 * distanceScale;
-        const eyeRadius = 7 * distanceScale;
-        ctx.beginPath();
-        ctx.arc(x - eyeOffset, finalY - (6 * distanceScale), eyeRadius, 0, Math.PI * 2);
-        ctx.arc(x + eyeOffset, finalY - (6 * distanceScale), eyeRadius, 0, Math.PI * 2);
-        ctx.fillStyle = '#00ffcc';
-        ctx.fill();
-        ctx.shadowColor = '#00ffcc';
-        ctx.shadowBlur = 10;
-
-        // Overhead Stats
-        const barW = 100 * distanceScale;
-        const barH = 8 * distanceScale;
-        const barX = x - barW / 2;
-        const barY = finalY - radius - (24 * distanceScale);
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(barX, barY, barW, barH);
-
-        const currentHpW = (state.monster.hp / state.monster.maxHp) * barW;
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(barX, barY, currentHpW, barH);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${Math.max(12, 15 * distanceScale)}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(`TARGET [${Math.round(dist)}m]`, x, barY - 8);
-
-        ctx.restore();
-    }
-
-    // Offscreen Horizontal Radar Arrow Indicator
-    function drawRadarPointer(relativeAngle) {
-        radarPointer.style.display = 'block';
-
-        const arrowAngleRad = toRad(relativeAngle - 90);
-        const radiusPx = Math.min(window.innerWidth, window.innerHeight) * 0.38;
-
-        const arrowX = Math.cos(arrowAngleRad) * radiusPx;
-        const arrowY = Math.sin(arrowAngleRad) * radiusPx;
-
-        radarPointer.style.transform = `translate(${arrowX}px, ${arrowY}px) rotate(${relativeAngle}deg)`;
-    }
-
-    // Start Button Trigger
-    startBtn.addEventListener('click', startARApp);
-</script>
+  </script>
 </body>
 </html>
